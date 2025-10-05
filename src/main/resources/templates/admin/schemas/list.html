@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Schemas - Delta Sharing OnPrem</title>
+    <link rel="stylesheet" th:href="@{/css/admin.css}">
+</head>
+<body>
+    <div class="admin-layout">
+        <aside class="sidebar">
+            <div class="sidebar-header"><h1>🔷 Delta Sharing OnPrem</h1></div>
+            <nav class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Main</div>
+                    <a href="/" class="nav-link"><span class="nav-icon">📊</span><span>Dashboard</span></a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Management</div>
+                    <a href="/admin/shares" class="nav-link"><span class="nav-icon">🗂️</span><span>Shares</span></a>
+                    <a href="/admin/schemas" class="nav-link active"><span class="nav-icon">📁</span><span>Schemas</span></a>
+                    <a href="/admin/tables" class="nav-link"><span class="nav-icon">📋</span><span>Tables</span></a>
+                </div>
+            </nav>
+        </aside>
+        <main class="main-content">
+            <div class="topbar">
+                <h2 class="topbar-title">Schemas</h2>
+                <div class="topbar-actions"><a href="/admin/schemas/new" class="btn btn-primary">➕ New Schema</a></div>
+            </div>
+            <div class="content">
+                <div th:if="${successMessage}" class="alert alert-success">✅ <span th:text="${successMessage}"></span></div>
+                <div th:if="${errorMessage}" class="alert alert-error">❌ <span th:text="${errorMessage}"></span></div>
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">All Schemas</h3>
+                        <span class="badge badge-info" th:text="${#lists.size(schemas)} + ' total'">0 total</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-container" th:if="${!#lists.isEmpty(schemas)}">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Name</th>
+                                        <th>Share</th>
+                                        <th>Description</th>
+                                        <th>Tables</th>
+                                        <th>Created</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr th:each="schema : ${schemas}">
+                                        <td th:text="${schema.id}">1</td>
+                                        <td><strong th:text="${schema.name}">schema-name</strong></td>
+                                        <td><span class="badge badge-info" th:text="${schema.shareName}">share</span></td>
+                                        <td th:text="${schema.description}">Description</td>
+                                        <td><span class="badge badge-success" th:text="${schema.tablesCount} + ' tables'">0 tables</span></td>
+                                        <td th:text="${#temporals.format(schema.createdAt, 'dd/MM/yyyy HH:mm')}">01/01/2025</td>
+                                        <td>
+                                            <div class="table-actions">
+                                                <a th:href="@{/admin/schemas/{id}/edit(id=${schema.id})}" class="btn btn-secondary btn-sm">✏️ Edit</a>
+                                                <a th:href="@{/admin/schemas/{id}/delete(id=${schema.id})}" class="btn btn-danger btn-sm" onclick="return confirm('Delete this schema?');">🗑️ Delete</a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div th:if="${#lists.isEmpty(schemas)}" class="empty-state">
+                            <div class="empty-state-icon">📁</div>
+                            <h3>No schemas yet</h3>
+                            <p>Create your first schema to organize tables</p>
+                            <a href="/admin/schemas/new" class="btn btn-primary" style="margin-top: 1rem;">➕ Create Schema</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

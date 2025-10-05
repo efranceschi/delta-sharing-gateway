@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Delta Sharing OnPrem</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔷</text></svg>">
+    <link rel="stylesheet" th:href="@{/css/admin.css}">
+    <link rel="stylesheet" th:href="@{/css/treeview.css}">
+</head>
+<body>
+    <div class="admin-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h1>🔷 Delta Sharing OnPrem</h1>
+            </div>
+            <nav class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Main</div>
+                    <a href="/" class="nav-link active">
+                        <span class="nav-icon">📊</span>
+                        <span>Dashboard</span>
+                    </a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">
+                        Management
+                        <div class="tree-controls" style="display: inline-flex; gap: 0.25rem; margin-left: 0.5rem;">
+                            <button id="tree-expand-all" class="tree-control-btn" title="Expand All">⊕</button>
+                            <button id="tree-collapse-all" class="tree-control-btn" title="Collapse All">⊖</button>
+                            <button id="tree-refresh" class="tree-control-btn" title="Refresh">↻</button>
+                        </div>
+                    </div>
+                    <div id="management-treeview" class="tree-body" style="max-height: 400px; overflow-y: auto;">
+                        <div class="tree-loading">Loading tree data</div>
+                    </div>
+                </div>
+                
+                <div class="nav-section">
+                    <div class="nav-section-title">Quick Access</div>
+                    <a href="/admin/shares" class="nav-link">
+                        <span class="nav-icon">🗂️</span>
+                        <span>All Shares</span>
+                    </a>
+                    <a href="/admin/schemas" class="nav-link">
+                        <span class="nav-icon">📁</span>
+                        <span>All Schemas</span>
+                    </a>
+                    <a href="/admin/tables" class="nav-link">
+                        <span class="nav-icon">📋</span>
+                        <span>All Tables</span>
+                    </a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">API</div>
+                    <a href="/swagger-ui.html" class="nav-link" target="_blank">
+                        <span class="nav-icon">📡</span>
+                        <span>API Docs</span>
+                    </a>
+                    <a href="/h2-console" class="nav-link" target="_blank">
+                        <span class="nav-icon">💾</span>
+                        <span>Database</span>
+                    </a>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Topbar -->
+            <div class="topbar">
+                <h2 class="topbar-title">Dashboard</h2>
+                <div class="topbar-actions">
+                    <span class="badge badge-info">v<span th:text="${version}">1.0.0</span></span>
+                </div>
+            </div>
+
+            <!-- Content -->
+            <div class="content">
+                <!-- Tree Details Panel -->
+                <div id="tree-details-panel" class="tree-details-panel" style="display: none;">
+                    <!-- Details will be populated by JavaScript -->
+                </div>
+                
+                <!-- Stats Grid -->
+                <div class="stats-grid" style="margin-top: 2rem;">
+                    <div class="stat-card">
+                        <div class="stat-icon primary">🗂️</div>
+                        <div class="stat-content">
+                            <h3 th:text="${sharesCount}">0</h3>
+                            <p>Total Shares</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon success">📁</div>
+                        <div class="stat-content">
+                            <h3 th:text="${schemasCount}">0</h3>
+                            <p>Total Schemas</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon warning">📋</div>
+                        <div class="stat-content">
+                            <h3 th:text="${tablesCount}">0</h3>
+                            <p>Total Tables</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon info">✅</div>
+                        <div class="stat-content">
+                            <h3>Active</h3>
+                            <p>System Status</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Quick Actions</h3>
+                    </div>
+                    <div class="card-body">
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                            <a href="/admin/shares/new" class="btn btn-primary">
+                                ➕ Create Share
+                            </a>
+                            <a href="/admin/schemas/new" class="btn btn-primary">
+                                ➕ Create Schema
+                            </a>
+                            <a href="/admin/tables/new" class="btn btn-primary">
+                                ➕ Create Table
+                            </a>
+                            <a href="/swagger-ui.html" class="btn btn-secondary" target="_blank">
+                                📡 API Documentation
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Getting Started -->
+                <div class="card" style="margin-top: 2rem;">
+                    <div class="card-header">
+                        <h3 class="card-title">🚀 Getting Started</h3>
+                    </div>
+                    <div class="card-body">
+                        <h4 style="margin-bottom: 1rem; font-size: 1rem; font-weight: 600;">Test the Delta Sharing API:</h4>
+                        <div style="background: #1F2937; color: #F9FAFB; padding: 1rem; border-radius: 0.375rem; font-family: monospace; font-size: 0.875rem; overflow-x: auto;">
+                            <div style="margin-bottom: 0.5rem;"># Set your token</div>
+                            <div style="margin-bottom: 1rem;">export TOKEN="test"</div>
+                            <div style="margin-bottom: 0.5rem;"># List all shares</div>
+                            <div>curl -H "Authorization: Bearer $TOKEN" \</div>
+                            <div style="margin-left: 2rem;">http://localhost:8080/delta-sharing/shares | jq</div>
+                        </div>
+                        <div style="margin-top: 1rem;">
+                            <a href="/swagger-ui.html" class="btn btn-primary" target="_blank">
+                                View Full API Documentation →
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <!-- TreeView JavaScript -->
+    <script th:src="@{/js/treeview.js}"></script>
+</body>
+</html>

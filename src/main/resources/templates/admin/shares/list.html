@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shares - Delta Sharing OnPrem</title>
+    <link rel="stylesheet" th:href="@{/css/admin.css}">
+</head>
+<body>
+    <div class="admin-layout">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h1>🔷 Delta Sharing OnPrem</h1>
+            </div>
+            <nav class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Main</div>
+                    <a href="/" class="nav-link">
+                        <span class="nav-icon">📊</span>
+                        <span>Dashboard</span>
+                    </a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">Management</div>
+                    <a href="/admin/shares" class="nav-link active">
+                        <span class="nav-icon">🗂️</span>
+                        <span>Shares</span>
+                    </a>
+                    <a href="/admin/schemas" class="nav-link">
+                        <span class="nav-icon">📁</span>
+                        <span>Schemas</span>
+                    </a>
+                    <a href="/admin/tables" class="nav-link">
+                        <span class="nav-icon">📋</span>
+                        <span>Tables</span>
+                    </a>
+                </div>
+                <div class="nav-section">
+                    <div class="nav-section-title">API</div>
+                    <a href="/swagger-ui.html" class="nav-link" target="_blank">
+                        <span class="nav-icon">📡</span>
+                        <span>API Docs</span>
+                    </a>
+                    <a href="/h2-console" class="nav-link" target="_blank">
+                        <span class="nav-icon">💾</span>
+                        <span>Database</span>
+                    </a>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Topbar -->
+            <div class="topbar">
+                <h2 class="topbar-title">Shares</h2>
+                <div class="topbar-actions">
+                    <a href="/admin/shares/new" class="btn btn-primary">
+                        ➕ New Share
+                    </a>
+                </div>
+            </div>
+
+            <!-- Content -->
+            <div class="content">
+                <!-- Alerts -->
+                <div th:if="${successMessage}" class="alert alert-success">
+                    ✅ <span th:text="${successMessage}"></span>
+                </div>
+                <div th:if="${errorMessage}" class="alert alert-error">
+                    ❌ <span th:text="${errorMessage}"></span>
+                </div>
+
+                <!-- Table Card -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">All Shares</h3>
+                        <span class="badge badge-info" th:text="${#lists.size(shares)} + ' total'">0 total</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-container" th:if="${!#lists.isEmpty(shares)}">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Name</th>
+                                        <th>Description</th>
+                                        <th>Status</th>
+                                        <th>Schemas</th>
+                                        <th>Created</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr th:each="share : ${shares}">
+                                        <td th:text="${share.id}">1</td>
+                                        <td>
+                                            <strong th:text="${share.name}">share-name</strong>
+                                        </td>
+                                        <td th:text="${share.description}">Description</td>
+                                        <td>
+                                            <span th:if="${share.active}" class="badge badge-success">Active</span>
+                                            <span th:unless="${share.active}" class="badge badge-danger">Inactive</span>
+                                        </td>
+                                        <td>
+                                            <span class="badge badge-info" th:text="${share.schemasCount} + ' schemas'">0 schemas</span>
+                                        </td>
+                                        <td th:text="${#temporals.format(share.createdAt, 'dd/MM/yyyy HH:mm')}">01/01/2025</td>
+                                        <td>
+                                            <div class="table-actions">
+                                                <a th:href="@{/admin/shares/{id}/edit(id=${share.id})}" class="btn btn-secondary btn-sm">
+                                                    ✏️ Edit
+                                                </a>
+                                                <a th:href="@{/admin/shares/{id}/delete(id=${share.id})}" 
+                                                   class="btn btn-danger btn-sm"
+                                                   onclick="return confirm('Are you sure you want to delete this share?');">
+                                                    🗑️ Delete
+                                                </a>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <div th:if="${#lists.isEmpty(shares)}" class="empty-state">
+                            <div class="empty-state-icon">🗂️</div>
+                            <h3>No shares yet</h3>
+                            <p>Create your first share to get started</p>
+                            <a href="/admin/shares/new" class="btn btn-primary" style="margin-top: 1rem;">
+                                ➕ Create Share
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+</html>
