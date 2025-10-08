@@ -8,12 +8,15 @@ import com.databricks.deltasharing.model.DeltaTable;
 import com.databricks.deltasharing.repository.DeltaSchemaRepository;
 import com.databricks.deltasharing.repository.DeltaShareRepository;
 import com.databricks.deltasharing.repository.DeltaTableRepository;
+import com.databricks.deltasharing.service.storage.FakeFileStorageService;
+import com.databricks.deltasharing.service.storage.FileStorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -30,6 +33,7 @@ public class DeltaSharingService {
     private final DeltaShareRepository shareRepository;
     private final DeltaSchemaRepository schemaRepository;
     private final DeltaTableRepository tableRepository;
+    private final FileStorageService fileStorageService;
     
     /**
      * List all shares
@@ -159,25 +163,36 @@ public class DeltaSharingService {
         // Return newline-delimited JSON (NDJSON) format
         StringBuilder response = new StringBuilder();
         
-        // Protocol line
+        // Protocol line - SIMPLE format for /metadata endpoint (Databricks compatible)
         ProtocolResponse protocol = ProtocolResponse.builder()
                 .minReaderVersion(1)
                 .build();
-        response.append(toJson(protocol)).append("\n");
+        String protocolJson = String.format("{\"protocol\":%s}", toJson(protocol));
+        response.append(protocolJson).append("\n");
         
-        // Metadata line
+        // Metadata line - SIMPLE format for /metadata endpoint (Databricks compatible)
+        // Generate dynamic schema based on table name and format
+        String schemaString = FakeFileStorageService.generateFakeSchema(table.getName(), table.getFormat());
+        
+        // Get partition columns if using fake storage
+        List<String> partitionColumns = new ArrayList<>();
+        if (fileStorageService instanceof FakeFileStorageService) {
+            String[] partCols = ((FakeFileStorageService) fileStorageService).getPartitionColumns(table.getName());
+            partitionColumns = Arrays.asList(partCols);
+        }
+        
         MetadataResponse metadata = MetadataResponse.builder()
                 .id(table.getId().toString())
-                .name(table.getName())
-                .description(table.getDescription())
                 .format(FormatResponse.builder()
                         .provider(table.getFormat())
                         .build())
-                .schemaString("{\"type\":\"struct\",\"fields\":[]}")
-                .partitionColumns(new ArrayList<>())
+                .schemaString(schemaString)
+                .partitionColumns(partitionColumns)
                 .configuration(new HashMap<>())
                 .build();
-        response.append(toJson(metadata)).append("\n");
+        // SIMPLE format (no deltaMetadata wrapper) - Databricks compatible
+        String metadataJson = String.format("{\"metaData\":%s}", toJson(metadata));
+        response.append(metadataJson).append("\n");
         
         return response.toString();
     }
@@ -189,7 +204,8 @@ public class DeltaSharingService {
     @Transactional(readOnly = true)
     public String queryTableData(String shareName, String schemaName, String tableName, 
                                   QueryTableRequest request) {
-        log.debug("Querying data for table: {}.{}.{}", shareName, schemaName, tableName);
+        log.debug("Querying data for table: {}.{}.{} with storage type: {}", 
+                  shareName, schemaName, tableName, fileStorageService.getStorageType());
         
         DeltaTable table = tableRepository.findByNameAndSchemaNameAndShareName(
                 tableName, schemaName, shareName)
@@ -201,26 +217,60 @@ public class DeltaSharingService {
         StringBuilder response = new StringBuilder();
         
         // Protocol line
+        // Format for responseformat=parquet: {"protocol": {...}}
+        // Format for responseformat=delta: {"protocol": {"deltaProtocol": {...}}}
         ProtocolResponse protocol = ProtocolResponse.builder()
                 .minReaderVersion(1)
+                .minWriterVersion(1)  // Required by official client
                 .build();
-        response.append(toJson(protocol)).append("\n");
+        String protocolJson = String.format("{\"protocol\":%s}", toJson(protocol));
+        response.append(protocolJson).append("\n");
         
         // Metadata line
+        // Format for responseformat=parquet: {"metaData": {...}}
+        // Format for responseformat=delta: {"metaData": {"deltaMetadata": {...}}}
+        // Generate dynamic schema based on table name and format
+        String schemaString = FakeFileStorageService.generateFakeSchema(table.getName(), table.getFormat());
+        
+        // Get partition columns if using fake storage
+        List<String> partitionColumns = new ArrayList<>();
+        if (fileStorageService instanceof FakeFileStorageService) {
+            String[] partCols = ((FakeFileStorageService) fileStorageService).getPartitionColumns(table.getName());
+            partitionColumns = Arrays.asList(partCols);
+        }
+        
         MetadataResponse metadata = MetadataResponse.builder()
                 .id(table.getId().toString())
                 .name(table.getName())
                 .format(FormatResponse.builder()
                         .provider(table.getFormat())
                         .build())
-                .schemaString("{\"type\":\"struct\",\"fields\":[]}")
-                .partitionColumns(new ArrayList<>())
+                .schemaString(schemaString)
+                // schema field omitted - not needed as schemaString already contains the schema
+                .partitionColumns(partitionColumns)
                 .build();
-        response.append(toJson(metadata)).append("\n");
+        // Databricks format (responseformat=parquet): {"metaData": {...}}
+        String metadataJson = String.format("{\"metaData\":%s}", toJson(metadata));
+        response.append(metadataJson).append("\n");
         
-        // File lines (empty for now - would contain actual file references)
-        // In a real implementation, this would query the Delta Lake transaction log
-        // and return file references with pre-signed URLs
+        // Get files from storage service
+        List<FileResponse> files = fileStorageService.getTableFiles(
+                table, 
+                request.getVersion(), 
+                request.getPredicateHints(), 
+                request.getLimitHint()
+        );
+        
+        // Add file lines to response - each wrapped in "file" key
+        // Format for responseformat=parquet: {"file": {...}}
+        // Format for responseformat=delta: {"file": {"deltaSingleAction": {...}}}
+        // Databricks uses parquet format by default
+        for (FileResponse file : files) {
+            String fileJson = String.format("{\"file\":%s}", toJson(file));
+            response.append(fileJson).append("\n");
+        }
+        
+        log.info("Returning {} files for table: {}.{}.{}", files.size(), shareName, schemaName, tableName);
         
         return response.toString();
     }

@@ -6,7 +6,6 @@
     <title>Dashboard - Delta Sharing OnPrem</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔷</text></svg>">
     <link rel="stylesheet" th:href="@{/css/admin.css}">
-    <link rel="stylesheet" th:href="@{/css/treeview.css}">
 </head>
 <body>
     <div class="admin-layout">
@@ -24,32 +23,18 @@
                     </a>
                 </div>
                 <div class="nav-section">
-                    <div class="nav-section-title">
-                        Management
-                        <div class="tree-controls" style="display: inline-flex; gap: 0.25rem; margin-left: 0.5rem;">
-                            <button id="tree-expand-all" class="tree-control-btn" title="Expand All">⊕</button>
-                            <button id="tree-collapse-all" class="tree-control-btn" title="Collapse All">⊖</button>
-                            <button id="tree-refresh" class="tree-control-btn" title="Refresh">↻</button>
-                        </div>
-                    </div>
-                    <div id="management-treeview" class="tree-body" style="max-height: 400px; overflow-y: auto;">
-                        <div class="tree-loading">Loading tree data</div>
-                    </div>
-                </div>
-                
-                <div class="nav-section">
-                    <div class="nav-section-title">Quick Access</div>
+                    <div class="nav-section-title">Management</div>
                     <a href="/admin/shares" class="nav-link">
                         <span class="nav-icon">🗂️</span>
-                        <span>All Shares</span>
+                        <span>Shares</span>
                     </a>
                     <a href="/admin/schemas" class="nav-link">
                         <span class="nav-icon">📁</span>
-                        <span>All Schemas</span>
+                        <span>Schemas</span>
                     </a>
                     <a href="/admin/tables" class="nav-link">
                         <span class="nav-icon">📋</span>
-                        <span>All Tables</span>
+                        <span>Tables</span>
                     </a>
                 </div>
                 <div class="nav-section">
@@ -78,13 +63,8 @@
 
             <!-- Content -->
             <div class="content">
-                <!-- Tree Details Panel -->
-                <div id="tree-details-panel" class="tree-details-panel" style="display: none;">
-                    <!-- Details will be populated by JavaScript -->
-                </div>
-                
                 <!-- Stats Grid -->
-                <div class="stats-grid" style="margin-top: 2rem;">
+                <div class="stats-grid">
                     <div class="stat-card">
                         <div class="stat-icon primary">🗂️</div>
                         <div class="stat-content">
@@ -162,8 +142,5 @@
             </div>
         </main>
     </div>
-    
-    <!-- TreeView JavaScript -->
-    <script th:src="@{/js/treeview.js}"></script>
 </body>
 </html>

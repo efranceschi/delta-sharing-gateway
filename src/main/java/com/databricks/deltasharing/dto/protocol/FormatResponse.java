@@ -6,6 +6,9 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /**
  * Format information for Delta table
  * Based on Delta Sharing Protocol specification
@@ -23,7 +26,8 @@ public class FormatResponse {
     private String provider;
     
     /**
-     * Additional format options
+     * Additional format options (required by Delta Kernel, must not be null)
      */
-    private Object options;
+    @Builder.Default
+    private Map<String, String> options = new HashMap<>();
 }

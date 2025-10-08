@@ -2,9 +2,7 @@ package com.databricks.deltasharing.model;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -18,9 +16,12 @@ import java.util.List;
 @Table(name = "delta_schemas", uniqueConstraints = {
     @UniqueConstraint(columnNames = {"name", "share_id"})
 })
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@ToString(exclude = {"share", "tables"})
+@EqualsAndHashCode(exclude = {"share", "tables"})
 public class DeltaSchema {
     
     @Id

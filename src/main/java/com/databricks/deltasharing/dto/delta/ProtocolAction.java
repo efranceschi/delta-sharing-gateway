@@ -1,4 +1,4 @@
-package com.databricks.deltasharing.dto.protocol;
+package com.databricks.deltasharing.dto.delta;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.AllArgsConstructor;
@@ -7,15 +7,14 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * Protocol information for Delta Sharing
- * Based on Delta Sharing Protocol specification
+ * Represents the "protocol" action from Delta Lake transaction log
  */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class ProtocolResponse {
+public class ProtocolAction {
     
     /**
      * Minimum reader version required
@@ -24,7 +23,7 @@ public class ProtocolResponse {
     
     /**
      * Minimum writer version required
-     * Required by official Delta Sharing client
      */
     private Integer minWriterVersion;
 }
+

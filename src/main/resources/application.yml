@@ -1,51 +1,24 @@
+# =============================================================================
+# COMMON CONFIGURATION (applies to all profiles)
+# =============================================================================
 spring:
   application:
     name: delta-sharing-onprem
   
-  # Database Configuration (H2 for development)
-  datasource:
-    url: jdbc:h2:mem:deltasharing
-    driver-class-name: org.h2.Driver
-    username: sa
-    password: 
-  
-  # JPA Configuration
-  jpa:
-    hibernate:
-      ddl-auto: update
-    show-sql: true
-    properties:
-      hibernate:
-        format_sql: true
-        dialect: org.hibernate.dialect.H2Dialect
-    defer-datasource-initialization: true
-  
-  # SQL initialization
-  sql:
-    init:
-      mode: always
-      data-locations: classpath:data.sql
-  
-  # H2 Console
-  h2:
-    console:
-      enabled: true
-      path: /h2-console
+  # Active Profile
+  # Options: dev (development), prod (production)
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
   
   # Thymeleaf Configuration
   thymeleaf:
     cache: false
     prefix: classpath:/templates/
     suffix: .html
-  
-  # DevTools
-  devtools:
-    restart:
-      enabled: true
 
 # Server Configuration
 server:
-  port: 8080
+  port: ${SERVER_PORT:8080}
   error:
     include-message: always
     include-binding-errors: always
@@ -58,7 +31,7 @@ springdoc:
     path: /swagger-ui.html
     enabled: true
 
-# Delta Sharing Configuration
+# Delta Sharing Configuration - Common
 delta:
   sharing:
     auth:
@@ -66,10 +39,133 @@ delta:
       # Configure your bearer token here (leave empty for development mode)
       bearer-token: ${DELTA_SHARING_TOKEN:}
 
-# Logging
+---
+# =============================================================================
+# DEVELOPMENT PROFILE (dev)
+# - In-memory H2 Database
+# - Fake Object Storage (HTTP)
+# - Sample data initialization
+# - Debug logging
+# =============================================================================
+spring:
+  config:
+    activate:
+      on-profile: dev
+  
+  # Database Configuration - H2 In-Memory
+  datasource:
+    url: jdbc:h2:mem:deltasharing
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: 
+  
+  # JPA Configuration - Development
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.H2Dialect
+  
+  # H2 Console (only in dev)
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  
+  # DevTools (only in dev)
+  devtools:
+    restart:
+      enabled: true
+
+# Delta Sharing Configuration - Development
+delta:
+  sharing:
+    storage:
+      # Use FAKE storage in development
+      type: fake
+      
+      fake:
+        # Use HTTP in development
+        url-protocol: http
+        base-url: http://localhost:${SERVER_PORT:8080}
+
+# Logging - Development
 logging:
   level:
     com.databricks.deltasharing: DEBUG
     org.springframework.web: INFO
     org.hibernate: INFO
     org.springframework.security: INFO
+
+---
+# =============================================================================
+# PRODUCTION PROFILE (prod)
+# - PostgreSQL Database
+# - MinIO Object Storage (HTTPS)
+# - No sample data initialization
+# - Info/Warn logging
+# =============================================================================
+spring:
+  config:
+    activate:
+      on-profile: prod
+  
+  # Database Configuration - PostgreSQL
+  datasource:
+    url: ${POSTGRES_URL:jdbc:postgresql://localhost:5432/deltasharing}
+    driver-class-name: org.postgresql.Driver
+    username: ${POSTGRES_USER:deltasharing}
+    password: ${POSTGRES_PASSWORD:changeme}
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:10}
+      minimum-idle: ${DB_POOL_MIN_IDLE:2}
+      connection-timeout: ${DB_CONNECTION_TIMEOUT:30000}
+  
+  # JPA Configuration - Production
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  
+  # H2 Console (disabled in prod)
+  h2:
+    console:
+      enabled: false
+  
+  # DevTools (disabled in prod)
+  devtools:
+    restart:
+      enabled: false
+
+# Delta Sharing Configuration - Production
+delta:
+  sharing:
+    storage:
+      # Use MinIO storage in production
+      type: minio
+      
+      minio:
+        enabled: true
+        endpoint: ${MINIO_ENDPOINT:https://minio.your-domain.com}
+        access-key: ${MINIO_ACCESS_KEY:}
+        secret-key: ${MINIO_SECRET_KEY:}
+        bucket: ${MINIO_BUCKET:delta-sharing}
+        url-expiration-minutes: ${MINIO_URL_EXPIRATION:60}
+        # Use HTTPS for MinIO in production
+        use-ssl: true
+
+# Logging - Production
+logging:
+  level:
+    com.databricks.deltasharing: INFO
+    org.springframework.web: WARN
+    org.hibernate: WARN
+    org.springframework.security: WARN
+    org.springframework.boot: INFO

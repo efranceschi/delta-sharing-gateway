@@ -2,9 +2,7 @@ package com.databricks.deltasharing.model;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.time.LocalDateTime;
 
@@ -16,9 +14,12 @@ import java.time.LocalDateTime;
 @Table(name = "delta_tables", uniqueConstraints = {
     @UniqueConstraint(columnNames = {"name", "schema_id"})
 })
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@ToString(exclude = "schema")
+@EqualsAndHashCode(exclude = "schema")
 public class DeltaTable {
     
     @Id

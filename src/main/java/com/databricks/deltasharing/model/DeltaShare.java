@@ -2,9 +2,7 @@ package com.databricks.deltasharing.model;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -16,9 +14,12 @@ import java.util.List;
  */
 @Entity
 @Table(name = "delta_shares")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@ToString(exclude = "schemas")
+@EqualsAndHashCode(exclude = "schemas")
 public class DeltaShare {
     
     @Id

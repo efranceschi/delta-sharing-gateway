@@ -6,6 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -46,14 +47,21 @@ public class MetadataResponse {
     private String schemaString;
     
     /**
+     * Schema object (structured representation)
+     * This is the parsed version of schemaString
+     */
+    private Object schema;
+    
+    /**
      * Partition columns
      */
     private List<String> partitionColumns;
     
     /**
-     * Configuration properties
+     * Configuration properties (required by Delta Kernel, must not be null)
      */
-    private Map<String, String> configuration;
+    @Builder.Default
+    private Map<String, String> configuration = new HashMap<>();
     
     /**
      * Table version

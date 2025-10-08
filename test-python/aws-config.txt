@@ -1,0 +1,20 @@
+# AWS Configuration for S3 Proxy
+#
+# The Delta Kernel needs AWS credentials to access S3 URLs.
+# For our fake S3 proxy, we use dummy credentials.
+#
+# Add these to your environment:
+
+export AWS_ACCESS_KEY_ID=fake-access-key
+export AWS_SECRET_ACCESS_KEY=fake-secret-key
+export AWS_REGION=us-east-1
+
+# Configure custom S3 endpoint to point to our proxy
+export AWS_ENDPOINT_URL_S3=http://localhost:8080/s3-proxy
+
+# Or for boto3/AWS SDK:
+export AWS_ENDPOINT_URL=http://localhost:8080/s3-proxy
+
+# Disable SSL verification for local testing
+export AWS_NO_VERIFY_SSL=1
+

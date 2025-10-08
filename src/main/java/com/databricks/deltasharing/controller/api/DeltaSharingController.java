@@ -30,7 +30,9 @@ public class DeltaSharingController {
     
     private final DeltaSharingService deltaSharingService;
     
-    private static final String DELTA_SHARING_CAPABILITIES = "responseformat=parquet,delta";
+    // Databricks uses responseformat=parquet for simple file format: {"file": {...}}
+    // responseformat=delta would use: {"file": {"deltaSingleAction": {...}}}
+    private static final String DELTA_SHARING_CAPABILITIES = "responseformat=parquet";
     
     /**
      * List all shares
@@ -187,6 +189,7 @@ public class DeltaSharingController {
         
         return ResponseEntity.ok()
                 .header("Delta-Sharing-Capabilities", DELTA_SHARING_CAPABILITIES)
+                .header("Delta-Table-Version", "1")
                 .contentType(MediaType.parseMediaType("application/x-ndjson"))
                 .body(response);
     }
@@ -256,6 +259,7 @@ public class DeltaSharingController {
         
         return ResponseEntity.ok()
                 .header("Delta-Sharing-Capabilities", DELTA_SHARING_CAPABILITIES)
+                .header("Delta-Table-Version", "1")
                 .contentType(MediaType.parseMediaType("application/x-ndjson"))
                 .body(response);
     }
