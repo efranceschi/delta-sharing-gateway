@@ -65,3 +65,6 @@ spring-boot-devtools.properties
 *.zip
 *.tar.gz
 *.rar
+
+# Security - Default credentials file
+DEFAULT_CREDENTIALS.md

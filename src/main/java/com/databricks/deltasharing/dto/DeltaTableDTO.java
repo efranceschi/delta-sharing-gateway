@@ -27,6 +27,8 @@ public class DeltaTableDTO {
     
     private String schemaName;
     
+    private Long shareId;
+    
     private String shareName;
     
     private Boolean shareAsView;

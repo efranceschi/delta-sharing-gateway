@@ -63,6 +63,8 @@ public class DeltaSharingService {
     public ShareResponse getShare(String shareName) {
         log.debug("Getting share: {}", shareName);
         
+        verifyShareIsActive(shareName);
+        
         DeltaShare share = shareRepository.findByName(shareName)
                 .orElseThrow(() -> new ResourceNotFoundException("Share not found: " + shareName));
         
@@ -77,9 +79,7 @@ public class DeltaSharingService {
     public ListSchemasResponse listSchemas(String shareName, Integer maxResults, String pageToken) {
         log.debug("Listing schemas for share: {}", shareName);
         
-        // Verify share exists
-        shareRepository.findByName(shareName)
-                .orElseThrow(() -> new ResourceNotFoundException("Share not found: " + shareName));
+        verifyShareIsActive(shareName);
         
         List<DeltaSchema> schemas = schemaRepository.findByShareName(shareName);
         
@@ -101,6 +101,8 @@ public class DeltaSharingService {
     public ListTablesResponse listTables(String shareName, String schemaName, 
                                           Integer maxResults, String pageToken) {
         log.debug("Listing tables for share: {}, schema: {}", shareName, schemaName);
+        
+        verifyShareIsActive(shareName);
         
         // Verify schema exists
         schemaRepository.findByNameAndShareName(schemaName, shareName)
@@ -127,9 +129,7 @@ public class DeltaSharingService {
     public ListTablesResponse listAllTables(String shareName, Integer maxResults, String pageToken) {
         log.debug("Listing all tables for share: {}", shareName);
         
-        // Verify share exists
-        shareRepository.findByName(shareName)
-                .orElseThrow(() -> new ResourceNotFoundException("Share not found: " + shareName));
+        verifyShareIsActive(shareName);
         
         List<DeltaTable> tables = tableRepository.findByShareName(shareName);
         
@@ -153,6 +153,8 @@ public class DeltaSharingService {
     @Transactional(readOnly = true)
     public String queryTableMetadata(String shareName, String schemaName, String tableName) {
         log.debug("Querying metadata for table: {}.{}.{}", shareName, schemaName, tableName);
+        
+        verifyShareIsActive(shareName);
         
         DeltaTable table = tableRepository.findByNameAndSchemaNameAndShareName(
                 tableName, schemaName, shareName)
@@ -206,6 +208,8 @@ public class DeltaSharingService {
                                   QueryTableRequest request) {
         log.debug("Querying data for table: {}.{}.{} with storage type: {}", 
                   shareName, schemaName, tableName, fileStorageService.getStorageType());
+        
+        verifyShareIsActive(shareName);
         
         DeltaTable table = tableRepository.findByNameAndSchemaNameAndShareName(
                 tableName, schemaName, shareName)
@@ -275,7 +279,22 @@ public class DeltaSharingService {
         return response.toString();
     }
     
-    // Helper methods for conversion
+    // Helper methods for conversion and validation
+    
+    /**
+     * Verify if a share exists and is active
+     * @param shareName the share name to verify
+     * @throws ResourceNotFoundException if share not found or not active
+     */
+    private void verifyShareIsActive(String shareName) {
+        DeltaShare share = shareRepository.findByName(shareName)
+                .orElseThrow(() -> new ResourceNotFoundException("Share not found: " + shareName));
+        
+        if (share.getActive() == null || !share.getActive()) {
+            log.warn("Attempted to access inactive share: {}", shareName);
+            throw new ResourceNotFoundException("Share not found: " + shareName);
+        }
+    }
     
     private ShareResponse convertToShareResponse(DeltaShare share) {
         return ShareResponse.builder()

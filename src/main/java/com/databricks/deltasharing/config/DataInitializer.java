@@ -14,6 +14,7 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
+import org.springframework.core.annotation.Order;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -54,6 +55,7 @@ public class DataInitializer {
     private final Random random = new Random();
 
     @Bean
+    @Order(2)
     public CommandLineRunner initializeData() {
         return args -> {
             log.info("╔════════════════════════════════════════════════════════════════╗");
@@ -238,14 +240,14 @@ public class DataInitializer {
     }
     
     /**
-     * Generate a realistic data location path
+     * Generate a realistic data location path with S3 prefix
      */
     private String generateLocation(DeltaSchema schema, String tableName) {
-        String[] basePaths = {"/data", "/lake", "/warehouse", "/storage", "/datalake"};
-        String basePath = basePaths[random.nextInt(basePaths.length)];
+        String[] buckets = {"data-lake", "analytics", "warehouse", "storage", "delta-lake"};
+        String bucket = buckets[random.nextInt(buckets.length)];
         
-        return String.format("%s/%s/%s/%s",
-            basePath,
+        return String.format("s3://%s/%s/%s/%s",
+            bucket,
             schema.getShare().getName().replace("-share", ""),
             schema.getName(),
             tableName);

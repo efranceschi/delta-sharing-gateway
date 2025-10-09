@@ -1,11 +1,13 @@
 package com.databricks.deltasharing.controller.web;
 
+import com.databricks.deltasharing.repository.DeltaTableRepository;
 import com.databricks.deltasharing.service.DeltaShareManagementService;
 import com.databricks.deltasharing.service.DeltaSchemaManagementService;
 import com.databricks.deltasharing.service.DeltaTableManagementService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Controller;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 
@@ -17,8 +19,10 @@ public class DashboardController {
     private final DeltaShareManagementService shareService;
     private final DeltaSchemaManagementService schemaService;
     private final DeltaTableManagementService tableService;
+    private final DeltaTableRepository tableRepository;
     
     @GetMapping("/")
+    @Transactional(readOnly = true)
     public String dashboard(Model model) {
         log.info("Accessing dashboard");
         
@@ -29,7 +33,8 @@ public class DashboardController {
         model.addAttribute("sharesCount", sharesCount);
         model.addAttribute("schemasCount", schemasCount);
         model.addAttribute("tablesCount", tablesCount);
-        model.addAttribute("appName", "Delta Sharing OnPrem");
+        model.addAttribute("tables", tableRepository.findAll());
+        model.addAttribute("appName", "Delta Sharing Gateway");
         model.addAttribute("version", "1.0.0");
         
         return "dashboard";

@@ -394,6 +394,15 @@ body {
     background: var(--dark);
 }
 
+.btn-success {
+    background: var(--secondary);
+    color: white;
+}
+
+.btn-success:hover {
+    background: #059669;
+}
+
 .btn-danger {
     background: var(--danger);
     color: white;

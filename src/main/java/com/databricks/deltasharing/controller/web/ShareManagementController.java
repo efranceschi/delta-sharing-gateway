@@ -2,6 +2,7 @@ package com.databricks.deltasharing.controller.web;
 
 import com.databricks.deltasharing.dto.DeltaShareDTO;
 import com.databricks.deltasharing.service.DeltaShareManagementService;
+import com.databricks.deltasharing.service.DeltaSchemaManagementService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,6 +19,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 public class ShareManagementController {
     
     private final DeltaShareManagementService shareService;
+    private final DeltaSchemaManagementService schemaService;
     
     @GetMapping
     public String listShares(Model model) {
@@ -51,6 +53,11 @@ public class ShareManagementController {
             model.addAttribute("isEdit", false);
             return "admin/shares/form";
         }
+    }
+    
+    @GetMapping("/{id}")
+    public String viewShare(@PathVariable Long id) {
+        return "redirect:/admin/shares/" + id + "/schemas";
     }
     
     @GetMapping("/{id}/edit")
@@ -95,5 +102,16 @@ public class ShareManagementController {
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
         }
         return "redirect:/admin/shares";
+    }
+    
+    @GetMapping("/{id}/schemas")
+    public String listShareSchemas(@PathVariable Long id, Model model) {
+        try {
+            model.addAttribute("share", shareService.getShareById(id));
+            model.addAttribute("schemas", schemaService.getSchemasByShareId(id));
+            return "admin/shares/schemas";
+        } catch (Exception e) {
+            return "redirect:/admin/shares";
+        }
     }
 }

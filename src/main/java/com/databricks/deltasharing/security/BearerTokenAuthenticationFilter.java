@@ -1,11 +1,14 @@
 package com.databricks.deltasharing.security;
 
+import com.databricks.deltasharing.model.User;
+import com.databricks.deltasharing.service.UserManagementService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.lang.NonNull;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -14,15 +17,23 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.Collections;
 
 /**
  * Authentication filter for Bearer Token validation
- * Based on Delta Sharing Protocol authentication specification
+ * Validates API tokens against user database
  */
 @Component
 @Slf4j
 public class BearerTokenAuthenticationFilter extends OncePerRequestFilter {
+    
+    private final UserManagementService userManagementService;
+    
+    // Constructor with @Lazy to break circular dependency
+    public BearerTokenAuthenticationFilter(@Lazy UserManagementService userManagementService) {
+        this.userManagementService = userManagementService;
+    }
     
     @Value("${delta.sharing.auth.enabled:true}")
     private boolean authEnabled;
@@ -88,14 +99,43 @@ public class BearerTokenAuthenticationFilter extends OncePerRequestFilter {
     }
     
     private boolean isValidToken(String token) {
-        // Simple token validation - in production, validate against database or JWT
-        if (configuredBearerToken == null || configuredBearerToken.isEmpty()) {
-            // If no token configured, accept any non-empty token (development mode)
-            log.warn("No bearer token configured - accepting any token (DEVELOPMENT MODE)");
-            return token != null && !token.isEmpty();
+        // First, check if there's a configured bearer token (backward compatibility)
+        if (configuredBearerToken != null && !configuredBearerToken.isEmpty()) {
+            if (configuredBearerToken.equals(token)) {
+                log.debug("Token validated using configured bearer token");
+                return true;
+            }
         }
         
-        return configuredBearerToken.equals(token);
+        // Then, validate against user database tokens
+        try {
+            User user = userManagementService.findByApiToken(token);
+            
+            if (user == null) {
+                log.debug("Token not found in database");
+                return false;
+            }
+            
+            // Check if user has Enable API enabled
+            if (!user.getActive()) {
+                log.warn("API access disabled for user: {}", user.getUsername());
+                return false;
+            }
+            
+            // Check if token is expired
+            if (user.getTokenExpiresAt() != null && 
+                LocalDateTime.now().isAfter(user.getTokenExpiresAt())) {
+                log.warn("Expired token for user: {}", user.getUsername());
+                return false;
+            }
+            
+            log.info("Token validated successfully for user: {}", user.getUsername());
+            return true;
+            
+        } catch (Exception e) {
+            log.error("Error validating token: {}", e.getMessage());
+            return false;
+        }
     }
     
     private void sendUnauthorizedResponse(HttpServletResponse response, String message) throws IOException {

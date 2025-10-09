@@ -12,6 +12,7 @@ from tabulate import tabulate
 
 # Configuration
 PROFILE_FILE = "config.share"
+BEARER_TOKEN = "dss_" + "0" * 61  # 65 characters total (dss_ + 61 zeros)
 
 def print_section(title):
     """Print a formatted section header"""
@@ -93,7 +94,7 @@ def test_list_all_tables():
         # Prepare headers for direct API calls to get table format
         base_url = "http://localhost:8080/delta-sharing"
         headers = {
-            "Authorization": "Bearer test",
+            "Authorization": f"Bearer {BEARER_TOKEN}",
             "Content-Type": "application/json"
         }
         
@@ -136,8 +137,8 @@ def test_list_all_tables():
         return []
 
 def test_load_table_data(tables):
-    """Test 5: Load data from tables"""
-    print_section("TEST 5: Load Table Data")
+    """Test 6: Load data from tables"""
+    print_section("TEST 6: Load Table Data")
     
     if not tables:
         print("⚠️  No tables available to load data from")
@@ -170,8 +171,8 @@ def test_load_table_data(tables):
         return None
 
 def test_table_metadata(tables):
-    """Test 6: Get table metadata and statistics"""
-    print_section("TEST 6: Get Table Metadata and Statistics")
+    """Test 5: Get table metadata and statistics"""
+    print_section("TEST 5: Get Table Metadata and Statistics")
     
     if not tables:
         print("⚠️  No tables available to get metadata from")
@@ -264,7 +265,7 @@ def test_table_metadata(tables):
         
         base_url = "http://localhost:8080/delta-sharing"
         headers = {
-            "Authorization": "Bearer test",
+            "Authorization": f"Bearer {BEARER_TOKEN}",
             "Content-Type": "application/json"
         }
         
@@ -341,7 +342,7 @@ def test_direct_api():
     
     base_url = "http://localhost:8080/delta-sharing"
     headers = {
-        "Authorization": "Bearer test",
+        "Authorization": f"Bearer {BEARER_TOKEN}",
         "Content-Type": "application/json"
     }
     
@@ -408,7 +409,7 @@ def test_data_skipping():
     
     base_url = "http://localhost:8080/delta-sharing"
     headers = {
-        "Authorization": "Bearer test",
+        "Authorization": f"Bearer {BEARER_TOKEN}",
         "Content-Type": "application/json"
     }
     
@@ -630,7 +631,7 @@ def main():
     print(f"\nConfiguration:")
     print(f"  Profile: {PROFILE_FILE}")
     print(f"  Endpoint: http://localhost:8080/delta-sharing")
-    print(f"  Token: test")
+    print(f"  Token: {BEARER_TOKEN}")
     
     try:
         # Test 1: List shares
@@ -649,13 +650,13 @@ def main():
         # Test 4: List all tables
         all_tables = test_list_all_tables()
         
-        # Test 5: Load table data
-        if all_tables:
-            test_load_table_data(all_tables)
-        
-        # Test 6: Get table metadata
+        # Test 5: Get table metadata
         if all_tables:
             test_table_metadata(all_tables)
+        
+        # Test 6: Load table data
+        if all_tables:
+            test_load_table_data(all_tables)
         
         # Test 7: Direct API calls
         test_direct_api()

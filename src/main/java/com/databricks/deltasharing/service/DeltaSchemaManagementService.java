@@ -36,6 +36,13 @@ public class DeltaSchemaManagementService {
         return convertToDTO(schema);
     }
     
+    @Transactional(readOnly = true)
+    public List<DeltaSchemaDTO> getSchemasByShareId(Long shareId) {
+        return schemaRepository.findByShareId(shareId).stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+    
     @Transactional
     public DeltaSchemaDTO createSchema(DeltaSchemaDTO dto) {
         DeltaShare share = shareRepository.findById(dto.getShareId())

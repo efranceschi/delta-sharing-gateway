@@ -1,86 +1,154 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title th:text="${isEdit ? 'Edit Table' : 'New Table'}">Table Form</title>
-    <link rel="stylesheet" th:href="@{/css/admin.css}">
 </head>
 <body>
-    <div class="admin-layout">
-        <aside class="sidebar">
-            <div class="sidebar-header"><h1>🔷 Delta Sharing OnPrem</h1></div>
-            <nav class="sidebar-nav">
-                <div class="nav-section">
-                    <a href="/" class="nav-link"><span class="nav-icon">📊</span><span>Dashboard</span></a>
+    <th:block th:replace="~{layout :: layout(~{::title}, ~{::content})}">
+        <title th:text="${isEdit ? 'Edit Table' : 'New Table'}">Table Form</title>
+        
+        <th:block th:fragment="content">
+            <!-- Breadcrumb -->
+            <nav class="db-breadcrumb" th:if="${isEdit and table.shareId != null}">
+                <div class="db-breadcrumb-item">
+                    <a href="/"><i class="fas fa-home"></i> Home</a>
                 </div>
-                <div class="nav-section">
-                    <a href="/admin/shares" class="nav-link"><span class="nav-icon">🗂️</span><span>Shares</span></a>
-                    <a href="/admin/schemas" class="nav-link"><span class="nav-icon">📁</span><span>Schemas</span></a>
-                    <a href="/admin/tables" class="nav-link active"><span class="nav-icon">📋</span><span>Tables</span></a>
+                <span class="db-breadcrumb-separator">›</span>
+                <div class="db-breadcrumb-item">
+                    <a href="/admin/shares">Shares</a>
+                </div>
+                <span class="db-breadcrumb-separator">›</span>
+                <div class="db-breadcrumb-item">
+                    <a th:href="@{/admin/shares/{id}/schemas(id=${table.shareId})}" th:text="${table.shareName}">share_name</a>
+                </div>
+                <span class="db-breadcrumb-separator">›</span>
+                <div class="db-breadcrumb-item">
+                    <a th:href="@{/admin/schemas/{id}/tables(id=${table.schemaId})}" th:text="${table.schemaName}">schema_name</a>
+                </div>
+                <span class="db-breadcrumb-separator">›</span>
+                <div class="db-breadcrumb-item">
+                    <span class="db-breadcrumb-current" th:text="${table.name}">table_name</span>
                 </div>
             </nav>
-        </aside>
-        <main class="main-content">
-            <div class="topbar">
-                <h2 class="topbar-title" th:text="${isEdit ? 'Edit Table' : 'New Table'}">Table Form</h2>
-                <div class="topbar-actions"><a href="/admin/tables" class="btn btn-secondary">← Back</a></div>
-            </div>
-            <div class="content">
-                <div th:if="${errorMessage}" class="alert alert-error">❌ <span th:text="${errorMessage}"></span></div>
-                <div class="card" style="max-width: 800px;">
-                    <div class="card-header">
-                        <h3 class="card-title" th:text="${isEdit ? 'Edit Table Details' : 'Create New Table'}">Table Form</h3>
+            
+            <!-- Breadcrumb for new table or when share info not available -->
+            <nav class="db-breadcrumb" th:if="${!isEdit or table.shareId == null}">
+                <div class="db-breadcrumb-item">
+                    <a href="/"><i class="fas fa-home"></i> Home</a>
+                </div>
+                <span class="db-breadcrumb-separator">›</span>
+                <div class="db-breadcrumb-item">
+                    <a href="/admin/tables">Tables</a>
+                </div>
+                <span class="db-breadcrumb-separator">›</span>
+                <div class="db-breadcrumb-item">
+                    <span class="db-breadcrumb-current" th:text="${isEdit ? 'Edit' : 'New'}">New</span>
+                </div>
+            </nav>
+            
+            <!-- Top Bar -->
+            <header class="db-topbar">
+                <div class="db-topbar-left">
+                    <h1 style="font-size: 24px; font-weight: 600; margin: 0;" th:text="${isEdit ? 'Edit Table' : 'Create Table'}">Table Form</h1>
+                </div>
+                <div class="db-topbar-actions">
+                    <button class="db-btn db-btn-secondary" onclick="history.back()">
+                        ← Back
+                    </button>
+                </div>
+            </header>
+            
+            <!-- Content -->
+            <div class="db-content" style="background: #F9FAFB; padding: 24px;">
+                <!-- Error Alert -->
+                <div th:if="${errorMessage}" class="db-alert db-alert-error" style="margin-bottom: 24px;">
+                    ❌ <span th:text="${errorMessage}"></span>
+                </div>
+                
+                <!-- Form Card -->
+                <div style="background: #FFFFFF; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); max-width: 800px;">
+                    <div style="padding: 24px; border-bottom: 1px solid #E5E7EB;">
+                        <h2 style="font-size: 20px; font-weight: 600; margin: 0;" th:text="${isEdit ? 'Edit Table Details' : 'Create New Table'}">Table Form</h2>
                     </div>
-                    <div class="card-body">
-                        <form th:action="${isEdit ? '/admin/tables/' + table.id : '/admin/tables'}" th:object="${table}" method="post">
-                            <div class="form-group">
-                                <label for="name" class="form-label">Name *</label>
-                                <input type="text" id="name" th:field="*{name}" class="form-control" th:classappend="${#fields.hasErrors('name')} ? 'error' : ''" placeholder="e.g., customers" required>
-                                <span th:if="${#fields.hasErrors('name')}" th:errors="*{name}" class="form-error"></span>
+                    <div style="padding: 24px;">
+                        <form th:action="${isEdit ? '/admin/tables/' + table.id : '/admin/tables'}" 
+                              th:object="${table}" 
+                              method="post">
+                            
+                            <div class="db-form-group">
+                                <label for="name" class="db-form-label">Name *</label>
+                                <input type="text" 
+                                       id="name" 
+                                       th:field="*{name}" 
+                                       class="db-form-control"
+                                       placeholder="e.g., customers"
+                                       required>
+                                <span th:if="${#fields.hasErrors('name')}" 
+                                      th:errors="*{name}" 
+                                      style="color: #991B1B; font-size: 13px; margin-top: 4px; display: block;"></span>
                             </div>
-                            <div class="form-group">
-                                <label for="schemaId" class="form-label">Schema *</label>
-                                <select id="schemaId" th:field="*{schemaId}" class="form-control" required>
+
+                            <div class="db-form-group">
+                                <label for="schemaId" class="db-form-label">Schema *</label>
+                                <select id="schemaId" th:field="*{schemaId}" class="db-form-control" required>
                                     <option value="">Select a schema...</option>
-                                    <option th:each="schema : ${schemas}" th:value="${schema.id}" th:text="${schema.shareName + ' / ' + schema.name}">Schema</option>
+                                    <option th:each="schema : ${schemas}" 
+                                            th:value="${schema.id}" 
+                                            th:text="${schema.shareName + ' / ' + schema.name}">Schema</option>
                                 </select>
-                                <span th:if="${#fields.hasErrors('schemaId')}" th:errors="*{schemaId}" class="form-error"></span>
+                                <span th:if="${#fields.hasErrors('schemaId')}" 
+                                      th:errors="*{schemaId}" 
+                                      style="color: #991B1B; font-size: 13px; margin-top: 4px; display: block;"></span>
                             </div>
-                            <div class="form-group">
-                                <label for="description" class="form-label">Description</label>
-                                <textarea id="description" th:field="*{description}" class="form-control" rows="3" placeholder="Describe this table..."></textarea>
+
+                            <div class="db-form-group">
+                                <label for="description" class="db-form-label">Description</label>
+                                <textarea id="description" 
+                                          th:field="*{description}" 
+                                          class="db-form-control"
+                                          rows="3"
+                                          placeholder="Describe this table..."></textarea>
                             </div>
-                            <div class="form-group">
-                                <label for="location" class="form-label">Location</label>
-                                <input type="text" id="location" th:field="*{location}" class="form-control" placeholder="/data/tables/customers">
-                                <span class="form-help">Path to the table data</span>
+
+                            <div class="db-form-group">
+                                <label for="location" class="db-form-label">Location</label>
+                                <input type="text" 
+                                       id="location" 
+                                       th:field="*{location}" 
+                                       class="db-form-control"
+                                       placeholder="/data/tables/customers">
+                                <span style="color: #6B7280; font-size: 13px; margin-top: 4px; display: block;">Path to the table data</span>
                             </div>
-                            <div class="form-group">
-                                <label for="format" class="form-label">Format</label>
-                                <select id="format" th:field="*{format}" class="form-control">
+
+                            <div class="db-form-group">
+                                <label for="format" class="db-form-label">Format</label>
+                                <select id="format" th:field="*{format}" class="db-form-control">
                                     <option value="parquet">Parquet</option>
                                     <option value="delta">Delta</option>
-                                    <option value="csv">CSV</option>
-                                    <option value="json">JSON</option>
                                 </select>
                             </div>
-                            <div class="form-group">
-                                <div class="checkbox-wrapper">
+
+                            <div class="db-form-group">
+                                <label class="db-checkbox">
                                     <input type="checkbox" id="shareAsView" th:field="*{shareAsView}">
-                                    <label for="shareAsView" class="form-label" style="margin-bottom: 0;">Share as View</label>
-                                </div>
-                                <span class="form-help">Share this table as a view instead of direct access</span>
+                                    <span>Share as view</span>
+                                </label>
+                                <span style="color: #6B7280; font-size: 13px; margin-top: 4px; display: block;">Share this table as a read-only view</span>
                             </div>
-                            <div style="display: flex; gap: 1rem; margin-top: 2rem;">
-                                <button type="submit" class="btn btn-primary" th:text="${isEdit ? '💾 Update' : '➕ Create'}">Submit</button>
-                                <a href="/admin/tables" class="btn btn-secondary">Cancel</a>
+
+                            <div style="display: flex; gap: 12px; margin-top: 32px; padding-top: 24px; border-top: 1px solid #E5E7EB;">
+                                <button type="submit" class="db-btn db-btn-primary">
+                                    <span th:text="${isEdit ? 'Update Table' : '+ Create Table'}">Submit</span>
+                                </button>
+                                <button type="button" class="db-btn db-btn-secondary" onclick="history.back()">
+                                    Cancel
+                                </button>
                             </div>
                         </form>
                     </div>
                 </div>
             </div>
-        </main>
-    </div>
+        </th:block>
+    </th:block>
 </body>
 </html>

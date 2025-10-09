@@ -1,83 +1,140 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tables - Delta Sharing OnPrem</title>
-    <link rel="stylesheet" th:href="@{/css/admin.css}">
 </head>
 <body>
-    <div class="admin-layout">
-        <aside class="sidebar">
-            <div class="sidebar-header"><h1>🔷 Delta Sharing OnPrem</h1></div>
-            <nav class="sidebar-nav">
-                <div class="nav-section">
-                    <a href="/" class="nav-link"><span class="nav-icon">📊</span><span>Dashboard</span></a>
+    <th:block th:replace="~{layout :: layout(~{::title}, ~{::content})}">
+        <title>Tables</title>
+        
+        <th:block th:fragment="content">
+            <!-- Breadcrumb -->
+            <nav class="db-breadcrumb">
+                <div class="db-breadcrumb-item">
+                    <a href="/"><i class="fas fa-home"></i> Home</a>
                 </div>
-                <div class="nav-section">
-                    <a href="/admin/shares" class="nav-link"><span class="nav-icon">🗂️</span><span>Shares</span></a>
-                    <a href="/admin/schemas" class="nav-link"><span class="nav-icon">📁</span><span>Schemas</span></a>
-                    <a href="/admin/tables" class="nav-link active"><span class="nav-icon">📋</span><span>Tables</span></a>
+                <span class="db-breadcrumb-separator">›</span>
+                <div class="db-breadcrumb-item">
+                    <span class="db-breadcrumb-current">Tables</span>
                 </div>
             </nav>
-        </aside>
-        <main class="main-content">
-            <div class="topbar">
-                <h2 class="topbar-title">Tables</h2>
-                <div class="topbar-actions"><a href="/admin/tables/new" class="btn btn-primary">➕ New Table</a></div>
-            </div>
-            <div class="content">
-                <div th:if="${successMessage}" class="alert alert-success">✅ <span th:text="${successMessage}"></span></div>
-                <div th:if="${errorMessage}" class="alert alert-error">❌ <span th:text="${errorMessage}"></span></div>
-                <div class="card">
-                    <div class="card-header">
-                        <h3 class="card-title">All Tables</h3>
-                        <span class="badge badge-info" th:text="${#lists.size(tables)} + ' total'">0 total</span>
+            
+            <!-- Top Bar -->
+            <header class="db-topbar">
+                <div class="db-topbar-left">
+                    <h1 class="db-topbar-title">Tables</h1>
+                </div>
+                <div class="db-topbar-actions">
+                    <button class="db-btn db-btn-primary" onclick="window.location.href='/admin/tables/new'">
+                        + Create table
+                    </button>
+                </div>
+            </header>
+            
+            <!-- Content -->
+            <div class="db-content" style="background: #F9FAFB;">
+                <!-- Filters -->
+                <div class="db-content-header">
+                    <input type="text" class="db-filter-input" placeholder="Filter tables..." id="tableFilter">
+                </div>
+                
+                <!-- Stats Summary -->
+                <div style="padding: 16px 24px; background: #F9FAFB; border-bottom: 1px solid #E5E7EB; font-size: 13px; color: #6B7280;">
+                    Showing <strong th:text="${#lists.size(tables)}">0</strong> tables
+                </div>
+                
+                <!-- Alerts -->
+                <div style="padding: 16px 24px;" th:if="${successMessage != null or errorMessage != null}">
+                    <div th:if="${successMessage != null}" class="db-alert db-alert-success">
+                        ✅ <span th:text="${successMessage}"></span>
                     </div>
-                    <div class="card-body">
-                        <div class="table-container" th:if="${!#lists.isEmpty(tables)}">
-                            <table class="table">
-                                <thead>
-                                    <tr>
-                                        <th>ID</th>
-                                        <th>Name</th>
-                                        <th>Schema</th>
-                                        <th>Share</th>
-                                        <th>Format</th>
-                                        <th>Location</th>
-                                        <th>Created</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr th:each="table : ${tables}">
-                                        <td th:text="${table.id}">1</td>
-                                        <td><strong th:text="${table.name}">table-name</strong></td>
-                                        <td><span class="badge badge-success" th:text="${table.schemaName}">schema</span></td>
-                                        <td><span class="badge badge-info" th:text="${table.shareName}">share</span></td>
-                                        <td><span class="badge badge-info" th:text="${table.format}">parquet</span></td>
-                                        <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" th:text="${table.location}">location</td>
-                                        <td th:text="${#temporals.format(table.createdAt, 'dd/MM/yyyy HH:mm')}">01/01/2025</td>
-                                        <td>
-                                            <div class="table-actions">
-                                                <a th:href="@{/admin/tables/{id}/edit(id=${table.id})}" class="btn btn-secondary btn-sm">✏️ Edit</a>
-                                                <a th:href="@{/admin/tables/{id}/delete(id=${table.id})}" class="btn btn-danger btn-sm" onclick="return confirm('Delete this table?');">🗑️ Delete</a>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        <div th:if="${#lists.isEmpty(tables)}" class="empty-state">
-                            <div class="empty-state-icon">📋</div>
-                            <h3>No tables yet</h3>
-                            <p>Create your first table to start sharing data</p>
-                            <a href="/admin/tables/new" class="btn btn-primary" style="margin-top: 1rem;">➕ Create Table</a>
-                        </div>
+                    <div th:if="${errorMessage != null}" class="db-alert db-alert-error">
+                        ❌ <span th:text="${errorMessage}"></span>
                     </div>
                 </div>
+                
+                <!-- Table -->
+                <div class="db-table-wrapper" th:if="${!#lists.isEmpty(tables)}">
+                    <table class="db-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 60px;">ID</th>
+                                <th>Name</th>
+                                <th>Schema</th>
+                                <th>Share</th>
+                                <th style="width: 100px;">Format</th>
+                                <th>Location</th>
+                                <th style="width: 150px;">Created</th>
+                                <th style="width: 60px; text-align: center;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="table : ${tables}">
+                                <td th:text="${table.id}">1</td>
+                                <td>
+                                    <a th:href="@{/admin/tables/{id}(id=${table.id})}" th:text="${table.name}">table_name</a>
+                                </td>
+                                <td>
+                                    <span class="db-badge-status db-badge-success" th:text="${table.schemaName}">schema</span>
+                                </td>
+                                <td>
+                                    <span class="db-badge-status db-badge-info" th:text="${table.shareName}">share</span>
+                                </td>
+                                <td>
+                                    <span class="db-badge-status" th:classappend="${table.format == 'delta' ? 'db-badge-success' : 'db-badge-info'}" th:text="${table.format}">delta</span>
+                                </td>
+                                <td>
+                                    <span style="font-family: monospace; font-size: 12px; color: #6B7280; display: block; max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" th:text="${table.location}">location</span>
+                                </td>
+                                <td style="color: #6B7280;" th:text="${#temporals.format(table.createdAt, 'MMM dd, yyyy')}">-</td>
+                                <td>
+                                    <div class="db-actions-menu">
+                                        <button class="db-actions-trigger" aria-label="Actions">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                        <div class="db-actions-dropdown">
+                                            <a th:href="@{/admin/tables/{id}/edit(id=${table.id})}" class="db-action-item">
+                                                <i class="fas fa-edit"></i>
+                                                <span>Edit</span>
+                                            </a>
+                                            <div class="db-action-separator"></div>
+                                            <button class="db-action-item db-action-danger" 
+                                                    th:data-name="${table.name}"
+                                                    th:data-href="@{/admin/tables/{id}/delete(id=${table.id})}" 
+                                                    onclick="if(confirm('Delete table ' + this.dataset.name + '?')) window.location.href=this.dataset.href">
+                                                <i class="fas fa-trash"></i>
+                                                <span>Delete</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Empty State -->
+                <div th:if="${#lists.isEmpty(tables)}" class="db-empty-state">
+                    <div class="db-empty-icon">📊</div>
+                    <h3 class="db-empty-title">No tables found</h3>
+                    <p class="db-empty-message">Create your first table to start sharing data</p>
+                    <button class="db-btn db-btn-primary" style="margin-top: 16px;" onclick="window.location.href='/admin/tables/new'">
+                        + Create table
+                    </button>
+                </div>
             </div>
-        </main>
-    </div>
+            
+            <script>
+                document.getElementById('tableFilter')?.addEventListener('input', function(e) {
+                    const filter = e.target.value.toLowerCase();
+                    const rows = document.querySelectorAll('.db-table tbody tr');
+                    rows.forEach(row => {
+                        const text = row.textContent.toLowerCase();
+                        row.style.display = text.includes(filter) ? '' : 'none';
+                    });
+                });
+            </script>
+        </th:block>
+    </th:block>
 </body>
 </html>

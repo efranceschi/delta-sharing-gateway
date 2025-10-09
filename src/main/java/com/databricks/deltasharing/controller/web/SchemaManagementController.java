@@ -3,6 +3,7 @@ package com.databricks.deltasharing.controller.web;
 import com.databricks.deltasharing.dto.DeltaSchemaDTO;
 import com.databricks.deltasharing.service.DeltaSchemaManagementService;
 import com.databricks.deltasharing.service.DeltaShareManagementService;
+import com.databricks.deltasharing.service.DeltaTableManagementService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,6 +21,7 @@ public class SchemaManagementController {
     
     private final DeltaSchemaManagementService schemaService;
     private final DeltaShareManagementService shareService;
+    private final DeltaTableManagementService tableService;
     
     @GetMapping
     public String listSchemas(Model model) {
@@ -56,6 +58,11 @@ public class SchemaManagementController {
             model.addAttribute("isEdit", false);
             return "admin/schemas/form";
         }
+    }
+    
+    @GetMapping("/{id}")
+    public String viewSchema(@PathVariable Long id) {
+        return "redirect:/admin/schemas/" + id + "/tables";
     }
     
     @GetMapping("/{id}/edit")
@@ -103,5 +110,17 @@ public class SchemaManagementController {
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
         }
         return "redirect:/admin/schemas";
+    }
+    
+    @GetMapping("/{id}/tables")
+    public String listSchemaTables(@PathVariable Long id, Model model) {
+        try {
+            DeltaSchemaDTO schema = schemaService.getSchemaById(id);
+            model.addAttribute("schema", schema);
+            model.addAttribute("tables", tableService.getTablesBySchemaId(id));
+            return "admin/schemas/tables";
+        } catch (Exception e) {
+            return "redirect:/admin/schemas";
+        }
     }
 }

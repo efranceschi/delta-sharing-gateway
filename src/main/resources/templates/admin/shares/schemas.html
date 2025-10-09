@@ -5,7 +5,7 @@
 </head>
 <body>
     <th:block th:replace="~{layout :: layout(~{::title}, ~{::content})}">
-        <title>Schemas</title>
+        <title th:text="${share.name} + ' - Schemas'">Schemas</title>
         
         <th:block th:fragment="content">
             <!-- Breadcrumb -->
@@ -15,17 +15,21 @@
                 </div>
                 <span class="db-breadcrumb-separator">›</span>
                 <div class="db-breadcrumb-item">
-                    <span class="db-breadcrumb-current">Schemas</span>
+                    <a href="/admin/shares">Shares</a>
+                </div>
+                <span class="db-breadcrumb-separator">›</span>
+                <div class="db-breadcrumb-item">
+                    <span class="db-breadcrumb-current" th:text="${share.name}">share_name</span>
                 </div>
             </nav>
             
             <!-- Top Bar -->
             <header class="db-topbar">
                 <div class="db-topbar-left">
-                    <h1 class="db-topbar-title">Schemas</h1>
+                    <h1 style="font-size: 24px; font-weight: 600; margin: 0;" th:text="${share.name} + ' - Schemas'">Schemas</h1>
                 </div>
                 <div class="db-topbar-actions">
-                    <button class="db-btn db-btn-primary" onclick="window.location.href='/admin/schemas/new'">
+                    <button class="db-btn db-btn-primary" th:onclick="'window.location.href=\'/admin/schemas/new?shareId=' + ${share.id} + '\''">
                         + Create schema
                     </button>
                 </div>
@@ -33,6 +37,16 @@
             
             <!-- Content -->
             <div class="db-content" style="background: #F9FAFB;">
+                <!-- Share Info Header -->
+                <div style="padding: 24px; background: #FFFFFF; border-bottom: 1px solid #E5E7EB;">
+                    <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 12px;">
+                        <h1 style="font-size: 24px; font-weight: 600; margin: 0;" th:text="${share.name}">share_name</h1>
+                        <span th:if="${share.active != null and share.active}" class="db-badge-status db-badge-success">Active</span>
+                        <span th:if="${share.active == null or !share.active}" class="db-badge-status db-badge-danger">Inactive</span>
+                    </div>
+                    <p style="color: #6B7280; margin: 0;" th:text="${share.description ?: 'No description'}">Description</p>
+                </div>
+                
                 <!-- Filters -->
                 <div class="db-content-header">
                     <input type="text" class="db-filter-input" placeholder="Filter schemas..." id="schemaFilter">
@@ -40,7 +54,7 @@
                 
                 <!-- Stats Summary -->
                 <div style="padding: 16px 24px; background: #F9FAFB; border-bottom: 1px solid #E5E7EB; font-size: 13px; color: #6B7280;">
-                    Showing <strong th:text="${#lists.size(schemas)}">0</strong> schemas
+                    Showing <strong th:text="${#lists.size(schemas)}">0</strong> schemas in <strong th:text="${share.name}">share</strong>
                 </div>
                 
                 <!-- Alerts -->
@@ -60,7 +74,6 @@
                             <tr>
                                 <th style="width: 60px;">ID</th>
                                 <th>Name</th>
-                                <th>Share</th>
                                 <th>Description</th>
                                 <th style="width: 100px;">Tables</th>
                                 <th style="width: 150px;">Created</th>
@@ -73,9 +86,6 @@
                                 <td>
                                     <a th:href="@{/admin/schemas/{id}(id=${schema.id})}" th:text="${schema.name}">schema_name</a>
                                 </td>
-                                <td>
-                                    <span class="db-badge-status db-badge-info" th:text="${schema.shareName}">share</span>
-                                </td>
                                 <td th:text="${schema.description ?: '-'}">Description</td>
                                 <td>
                                     <span class="db-badge-status db-badge-info" th:text="${schema.tablesCount}">0</span>
@@ -87,6 +97,10 @@
                                             <i class="fas fa-ellipsis-v"></i>
                                         </button>
                                         <div class="db-actions-dropdown">
+                                            <a th:href="@{/admin/schemas/{id}/tables(id=${schema.id})}" class="db-action-item">
+                                                <i class="fas fa-table"></i>
+                                                <span>View Tables</span>
+                                            </a>
                                             <a th:href="@{/admin/schemas/{id}/edit(id=${schema.id})}" class="db-action-item">
                                                 <i class="fas fa-edit"></i>
                                                 <span>Edit</span>
@@ -111,8 +125,8 @@
                 <div th:if="${#lists.isEmpty(schemas)}" class="db-empty-state">
                     <div class="db-empty-icon">📂</div>
                     <h3 class="db-empty-title">No schemas found</h3>
-                    <p class="db-empty-message">Create your first schema to organize tables</p>
-                    <button class="db-btn db-btn-primary" style="margin-top: 16px;" onclick="window.location.href='/admin/schemas/new'">
+                    <p class="db-empty-message">Create your first schema to organize tables in this share</p>
+                    <button class="db-btn db-btn-primary" style="margin-top: 16px;" th:onclick="'window.location.href=\'/admin/schemas/new?shareId=' + ${share.id} + '\''">
                         + Create schema
                     </button>
                 </div>
@@ -132,3 +146,4 @@
     </th:block>
 </body>
 </html>
+

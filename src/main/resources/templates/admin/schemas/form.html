@@ -1,65 +1,96 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title th:text="${isEdit ? 'Edit Schema' : 'New Schema'}">Schema Form</title>
-    <link rel="stylesheet" th:href="@{/css/admin.css}">
 </head>
 <body>
-    <div class="admin-layout">
-        <aside class="sidebar">
-            <div class="sidebar-header"><h1>🔷 Delta Sharing OnPrem</h1></div>
-            <nav class="sidebar-nav">
-                <div class="nav-section">
-                    <a href="/" class="nav-link"><span class="nav-icon">📊</span><span>Dashboard</span></a>
-                </div>
-                <div class="nav-section">
-                    <a href="/admin/shares" class="nav-link"><span class="nav-icon">🗂️</span><span>Shares</span></a>
-                    <a href="/admin/schemas" class="nav-link active"><span class="nav-icon">📁</span><span>Schemas</span></a>
-                    <a href="/admin/tables" class="nav-link"><span class="nav-icon">📋</span><span>Tables</span></a>
-                </div>
-            </nav>
-        </aside>
-        <main class="main-content">
-            <div class="topbar">
-                <h2 class="topbar-title" th:text="${isEdit ? 'Edit Schema' : 'New Schema'}">Schema Form</h2>
-                <div class="topbar-actions"><a href="/admin/schemas" class="btn btn-secondary">← Back</a></div>
-            </div>
-            <div class="content">
-                <div th:if="${errorMessage}" class="alert alert-error">❌ <span th:text="${errorMessage}"></span></div>
-                <div class="card" style="max-width: 800px;">
-                    <div class="card-header">
-                        <h3 class="card-title" th:text="${isEdit ? 'Edit Schema Details' : 'Create New Schema'}">Schema Form</h3>
+    <th:block th:replace="~{layout :: layout(~{::title}, ~{::content})}">
+        <title th:text="${isEdit ? 'Edit Schema' : 'New Schema'}">Schema Form</title>
+        
+        <th:block th:fragment="content">
+            <!-- Top Bar -->
+            <header class="db-topbar">
+                <div class="db-topbar-left">
+                    <div class="db-breadcrumb">
+                        <a href="/admin/shares">Shares</a>
+                        <span class="db-breadcrumb-separator">/</span>
+                        <span>Schemas</span>
+                        <span class="db-breadcrumb-separator">/</span>
+                        <span th:text="${isEdit ? 'Edit' : 'New'}">New</span>
                     </div>
-                    <div class="card-body">
-                        <form th:action="${isEdit ? '/admin/schemas/' + schema.id : '/admin/schemas'}" th:object="${schema}" method="post">
-                            <div class="form-group">
-                                <label for="name" class="form-label">Name *</label>
-                                <input type="text" id="name" th:field="*{name}" class="form-control" th:classappend="${#fields.hasErrors('name')} ? 'error' : ''" placeholder="e.g., analytics" required>
-                                <span th:if="${#fields.hasErrors('name')}" th:errors="*{name}" class="form-error"></span>
+                </div>
+                <div class="db-topbar-actions">
+                    <button class="db-btn db-btn-secondary" onclick="history.back()">
+                        ← Back
+                    </button>
+                </div>
+            </header>
+            
+            <!-- Content -->
+            <div class="db-content" style="background: #F9FAFB; padding: 24px;">
+                <!-- Error Alert -->
+                <div th:if="${errorMessage}" class="db-alert db-alert-error" style="margin-bottom: 24px;">
+                    ❌ <span th:text="${errorMessage}"></span>
+                </div>
+                
+                <!-- Form Card -->
+                <div style="background: #FFFFFF; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); max-width: 800px;">
+                    <div style="padding: 24px; border-bottom: 1px solid #E5E7EB;">
+                        <h2 style="font-size: 20px; font-weight: 600; margin: 0;" th:text="${isEdit ? 'Edit Schema Details' : 'Create New Schema'}">Schema Form</h2>
+                    </div>
+                    <div style="padding: 24px;">
+                        <form th:action="${isEdit ? '/admin/schemas/' + schema.id : '/admin/schemas'}" 
+                              th:object="${schema}" 
+                              method="post">
+                            
+                            <div class="db-form-group">
+                                <label for="name" class="db-form-label">Name *</label>
+                                <input type="text" 
+                                       id="name" 
+                                       th:field="*{name}" 
+                                       class="db-form-control"
+                                       placeholder="e.g., analytics"
+                                       required>
+                                <span th:if="${#fields.hasErrors('name')}" 
+                                      th:errors="*{name}" 
+                                      style="color: #991B1B; font-size: 13px; margin-top: 4px; display: block;"></span>
                             </div>
-                            <div class="form-group">
-                                <label for="shareId" class="form-label">Share *</label>
-                                <select id="shareId" th:field="*{shareId}" class="form-control" required>
+
+                            <div class="db-form-group">
+                                <label for="shareId" class="db-form-label">Share *</label>
+                                <select id="shareId" th:field="*{shareId}" class="db-form-control" required>
                                     <option value="">Select a share...</option>
-                                    <option th:each="share : ${shares}" th:value="${share.id}" th:text="${share.name}">Share</option>
+                                    <option th:each="share : ${shares}" 
+                                            th:value="${share.id}" 
+                                            th:text="${share.name}">Share</option>
                                 </select>
-                                <span th:if="${#fields.hasErrors('shareId')}" th:errors="*{shareId}" class="form-error"></span>
+                                <span th:if="${#fields.hasErrors('shareId')}" 
+                                      th:errors="*{shareId}" 
+                                      style="color: #991B1B; font-size: 13px; margin-top: 4px; display: block;"></span>
                             </div>
-                            <div class="form-group">
-                                <label for="description" class="form-label">Description</label>
-                                <textarea id="description" th:field="*{description}" class="form-control" rows="4" placeholder="Describe this schema..."></textarea>
+
+                            <div class="db-form-group">
+                                <label for="description" class="db-form-label">Description</label>
+                                <textarea id="description" 
+                                          th:field="*{description}" 
+                                          class="db-form-control"
+                                          rows="4"
+                                          placeholder="Describe this schema..."></textarea>
                             </div>
-                            <div style="display: flex; gap: 1rem; margin-top: 2rem;">
-                                <button type="submit" class="btn btn-primary" th:text="${isEdit ? '💾 Update' : '➕ Create'}">Submit</button>
-                                <a href="/admin/schemas" class="btn btn-secondary">Cancel</a>
+
+                            <div style="display: flex; gap: 12px; margin-top: 32px; padding-top: 24px; border-top: 1px solid #E5E7EB;">
+                                <button type="submit" class="db-btn db-btn-primary">
+                                    <span th:text="${isEdit ? 'Update Schema' : '+ Create Schema'}">Submit</span>
+                                </button>
+                                <button type="button" class="db-btn db-btn-secondary" onclick="history.back()">
+                                    Cancel
+                                </button>
                             </div>
                         </form>
                     </div>
                 </div>
             </div>
-        </main>
-    </div>
+        </th:block>
+    </th:block>
 </body>
 </html>

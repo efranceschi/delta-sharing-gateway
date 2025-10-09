@@ -189,17 +189,35 @@ public class HttpFileStorageService implements FileStorageService {
     private String resolveTableLocation(DeltaTable table) {
         String location = table.getLocation();
         
+        if (location == null || location.isEmpty()) {
+            location = table.getName();
+        }
+        
+        // Handle s3:// prefix - extract path after bucket
+        if (location.startsWith("s3://")) {
+            String withoutProtocol = location.substring(5); // Remove "s3://"
+            int firstSlash = withoutProtocol.indexOf('/');
+            
+            if (firstSlash > 0) {
+                location = withoutProtocol.substring(firstSlash + 1); // Path after bucket
+                log.debug("Resolved S3 location to local path: {}", location);
+            } else {
+                // Only bucket name, use table name
+                location = table.getName();
+            }
+        }
+        
         // If location is absolute, use it directly
-        if (location != null && (location.startsWith("/") || location.matches("^[a-zA-Z]:.*"))) {
+        if (location.startsWith("/") || location.matches("^[a-zA-Z]:.*")) {
             return location;
         }
         
         // Otherwise, combine with base path
         if (basePath != null && !basePath.isEmpty()) {
-            return Paths.get(basePath, location != null ? location : table.getName()).toString();
+            return Paths.get(basePath, location).toString();
         }
         
-        return location != null ? location : table.getName();
+        return location;
     }
     
     @Override

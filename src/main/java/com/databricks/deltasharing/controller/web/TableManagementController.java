@@ -58,6 +58,11 @@ public class TableManagementController {
         }
     }
     
+    @GetMapping("/{id}")
+    public String viewTable(@PathVariable Long id) {
+        return "redirect:/admin/tables/" + id + "/edit";
+    }
+    
     @GetMapping("/{id}/edit")
     public String showEditForm(@PathVariable Long id, Model model) {
         try {

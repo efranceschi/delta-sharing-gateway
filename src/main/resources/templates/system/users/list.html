@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+</head>
+<body>
+    <th:block th:replace="~{layout :: layout(~{::title}, ~{::content})}">
+        <title>Users</title>
+        
+        <th:block th:fragment="content">
+            <!-- Breadcrumb -->
+            <nav class="db-breadcrumb">
+                <div class="db-breadcrumb-item">
+                    <a href="/"><i class="fas fa-home"></i> Home</a>
+                </div>
+                <span class="db-breadcrumb-separator">›</span>
+                <div class="db-breadcrumb-item">
+                    <span class="db-breadcrumb-current">Users</span>
+                </div>
+            </nav>
+            
+            <!-- Top Bar -->
+            <header class="db-topbar">
+                <div class="db-topbar-left">
+                    <h1 class="db-topbar-title">Users</h1>
+                </div>
+                <div class="db-topbar-actions" sec:authorize="hasRole('ADMIN')">
+                    <button class="db-btn db-btn-primary" onclick="window.location.href='/system/users/new'">
+                        + Create user
+                    </button>
+                </div>
+            </header>
+            
+            <!-- Content -->
+            <div class="db-content" style="background: #F9FAFB;">
+                <!-- Alerts -->
+                <div th:if="${successMessage != null or errorMessage != null}" style="padding: 16px 24px;">
+                    <div th:if="${successMessage != null}" class="db-alert db-alert-success">
+                        <i class="fas fa-check-circle"></i>
+                        <span th:text="${successMessage}">Success</span>
+                    </div>
+                    <div th:if="${errorMessage != null}" class="db-alert db-alert-error">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <span th:text="${errorMessage}">Error</span>
+                    </div>
+                </div>
+                
+                <!-- Filters -->
+                <div class="db-content-header">
+                    <input type="text" class="db-filter-input" placeholder="Filter users..." id="userFilter">
+                </div>
+                
+                <!-- Table -->
+                <div class="db-table-wrapper">
+                    <table class="db-table" id="usersTable">
+                        <thead>
+                            <tr>
+                                <th style="width: 50px;">ID</th>
+                                <th>Username</th>
+                                <th>Full Name</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th style="width: 100px;">Enabled</th>
+                                <th style="width: 100px;">Active</th>
+                                <th style="width: 120px;">Token Status</th>
+                                <th style="width: 60px;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="user : ${users}">
+                                <td th:text="${user.id}">1</td>
+                                <td>
+                                    <a th:href="@{/system/users/{id}/edit(id=${user.id})}" 
+                                       th:text="${user.username}"
+                                       style="color: var(--db-primary); text-decoration: none; font-weight: 500;">admin</a>
+                                </td>
+                                <td th:text="${user.fullName ?: '-'}">Admin User</td>
+                                <td th:text="${user.email ?: '-'}">admin@example.com</td>
+                                <td>
+                                    <span class="db-badge-status" 
+                                          th:classappend="${user.role == 'ADMIN' ? 'db-badge-danger' : 'db-badge-info'}"
+                                          th:text="${user.role}">USER</span>
+                                </td>
+                                <td>
+                                    <span th:if="${user.enabled}" class="db-badge-status db-badge-success">
+                                        <i class="fas fa-check"></i> Yes
+                                    </span>
+                                    <span th:if="${!user.enabled}" class="db-badge-status db-badge-danger">
+                                        <i class="fas fa-times"></i> No
+                                    </span>
+                                </td>
+                                <td>
+                                    <span th:if="${user.active}" class="db-badge-status db-badge-success">
+                                        <i class="fas fa-check"></i> Yes
+                                    </span>
+                                    <span th:if="${!user.active}" class="db-badge-status db-badge-danger">
+                                        <i class="fas fa-times"></i> No
+                                    </span>
+                                </td>
+                                <td>
+                                    <span th:if="${user.apiToken != null}" class="db-badge-status db-badge-success">
+                                        <i class="fas fa-key"></i> Active
+                                    </span>
+                                    <span th:if="${user.apiToken == null}" class="db-badge-status db-badge-secondary">
+                                        <i class="fas fa-ban"></i> None
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="db-actions-menu">
+                                        <button class="db-actions-trigger">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                        <div class="db-actions-dropdown">
+                                            <a class="db-action-item" th:data-href="@{/system/users/{id}/edit(id=${user.id})}" onclick="window.location.href=this.dataset.href">
+                                                <i class="fas fa-edit"></i> Edit
+                                            </a>
+                                            <a class="db-action-item" 
+                                               th:if="${user.apiToken != null and user.active}"
+                                               th:data-href="@{/system/users/{id}/download-credentials(id=${user.id})}" 
+                                               onclick="window.location.href=this.dataset.href">
+                                                <i class="fas fa-download"></i> Download Credentials
+                                            </a>
+                                            <div class="db-action-separator"></div>
+                                            <a class="db-action-item db-action-danger" onclick="confirmDelete(this)" 
+                                               th:data-href="@{/system/users/{id}/delete(id=${user.id})}"
+                                               th:data-name="${user.username}">
+                                                <i class="fas fa-trash"></i> Delete
+                                            </a>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <script>
+                // Filter functionality
+                const filterInput = document.getElementById('userFilter');
+                const table = document.getElementById('usersTable');
+                const rows = table.querySelectorAll('tbody tr');
+                
+                filterInput.addEventListener('input', function() {
+                    const filterValue = this.value.toLowerCase();
+                    
+                    rows.forEach(row => {
+                        const text = row.textContent.toLowerCase();
+                        row.style.display = text.includes(filterValue) ? '' : 'none';
+                    });
+                });
+                
+                // Delete confirmation
+                function confirmDelete(element) {
+                    const name = element.dataset.name;
+                    const href = element.dataset.href;
+                    
+                    if (confirm('Are you sure you want to delete user "' + name + '"?')) {
+                        window.location.href = href;
+                    }
+                }
+            </script>
+        </th:block>
+    </th:block>
+</body>
+</html>
+

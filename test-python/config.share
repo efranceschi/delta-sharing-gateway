@@ -1,5 +1,5 @@
 {
   "shareCredentialsVersion": 1,
   "endpoint": "http://localhost:8080/delta-sharing",
-  "bearerToken": "test"
+  "bearerToken": "dss_0000000000000000000000000000000000000000000000000000000000000"
 }

@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+</head>
+<body>
+    <th:block th:replace="~{layout :: layout(~{::title}, ~{::content})}">
+        <title th:text="${isEdit ? 'Edit User' : 'Create User'}">User Form</title>
+        
+        <th:block th:fragment="content">
+            <!-- Breadcrumb -->
+            <nav class="db-breadcrumb">
+                <div class="db-breadcrumb-item">
+                    <a href="/"><i class="fas fa-home"></i> Home</a>
+                </div>
+                <span class="db-breadcrumb-separator">›</span>
+                <div class="db-breadcrumb-item">
+                    <a href="/system/users">Users</a>
+                </div>
+                <span class="db-breadcrumb-separator">›</span>
+                <div class="db-breadcrumb-item">
+                    <span class="db-breadcrumb-current" th:text="${isEdit ? 'Edit' : 'Create'}">Form</span>
+                </div>
+            </nav>
+            
+            <!-- Top Bar -->
+            <header class="db-topbar">
+                <div class="db-topbar-left">
+                    <h1 class="db-topbar-title" th:text="${isEdit ? 'Edit User' : 'Create User'}">User Form</h1>
+                </div>
+            </header>
+            
+            <!-- Content -->
+            <div class="db-content" style="background: #F9FAFB; padding: 24px;">
+                <div style="max-width: 800px;">
+                    <!-- Error Alert -->
+                    <div th:if="${errorMessage}" class="db-alert db-alert-error" style="margin-bottom: 24px;">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <span th:text="${errorMessage}">Error</span>
+                    </div>
+                    
+                    <!-- Form Card -->
+                    <div class="db-card">
+                        <form th:action="${isEdit ? '/system/users/' + user.id : '/system/users'}" 
+                              method="post" 
+                              th:object="${user}">
+                            
+                            <div class="db-form-grid">
+                                <!-- Username -->
+                                <div class="db-form-group">
+                                    <label class="db-form-label" for="username">
+                                        Username <span style="color: #EF4444;">*</span>
+                                    </label>
+                                    <input type="text" 
+                                           id="username" 
+                                           th:field="*{username}" 
+                                           class="db-form-input"
+                                           required>
+                                    <div th:if="${#fields.hasErrors('username')}" class="db-form-error">
+                                        <span th:errors="*{username}">Error</span>
+                                    </div>
+                                </div>
+                                
+                                <!-- Password -->
+                                <div class="db-form-group">
+                                    <label class="db-form-label" for="password">
+                                        Password <span th:if="${!isEdit}" style="color: #EF4444;">*</span>
+                                        <span th:if="${isEdit}" style="color: #6B7280; font-size: 12px;">(leave empty to keep current)</span>
+                                    </label>
+                                    <input type="password" 
+                                           id="password" 
+                                           th:field="*{password}" 
+                                           class="db-form-input"
+                                           th:required="${!isEdit}">
+                                    <div th:if="${#fields.hasErrors('password')}" class="db-form-error">
+                                        <span th:errors="*{password}">Error</span>
+                                    </div>
+                                </div>
+                                
+                                <!-- Full Name -->
+                                <div class="db-form-group">
+                                    <label class="db-form-label" for="fullName">Full Name</label>
+                                    <input type="text" 
+                                           id="fullName" 
+                                           th:field="*{fullName}" 
+                                           class="db-form-input">
+                                    <div th:if="${#fields.hasErrors('fullName')}" class="db-form-error">
+                                        <span th:errors="*{fullName}">Error</span>
+                                    </div>
+                                </div>
+                                
+                                <!-- Email -->
+                                <div class="db-form-group">
+                                    <label class="db-form-label" for="email">Email</label>
+                                    <input type="email" 
+                                           id="email" 
+                                           th:field="*{email}" 
+                                           class="db-form-input">
+                                    <div th:if="${#fields.hasErrors('email')}" class="db-form-error">
+                                        <span th:errors="*{email}">Error</span>
+                                    </div>
+                                </div>
+                                
+                                <!-- Role -->
+                                <div class="db-form-group">
+                                    <label class="db-form-label" for="role">Role</label>
+                                    <select id="role" th:field="*{role}" class="db-form-input">
+                                        <option value="USER">USER</option>
+                                        <option value="ADMIN">ADMIN</option>
+                                    </select>
+                                </div>
+                                
+                                <!-- Enable UI -->
+                                <div class="db-form-group">
+                                    <label class="db-form-checkbox">
+                                        <input type="checkbox" th:field="*{enabled}" class="db-checkbox-input">
+                                        <span class="db-checkbox-label">Enable UI</span>
+                                    </label>
+                                    <small style="color: #6B7280; display: block; margin-top: 4px;">
+                                        User can login to web interface
+                                    </small>
+                                </div>
+                                
+                                <!-- Enable API -->
+                                <div class="db-form-group">
+                                    <label class="db-form-checkbox">
+                                        <input type="checkbox" 
+                                               th:field="*{active}" 
+                                               class="db-checkbox-input"
+                                               id="enableApiCheckbox"
+                                               onchange="toggleTokenGeneration()">
+                                        <span class="db-checkbox-label">Enable API</span>
+                                    </label>
+                                    <small style="color: #6B7280; display: block; margin-top: 4px;">
+                                        User can access APIs with token
+                                    </small>
+                                </div>
+                            </div>
+                            
+                            <!-- API Token Display (Always Visible) -->
+                            <div style="margin-top: 32px; padding-top: 32px; border-top: 1px solid #E5E7EB;">
+                                <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px; color: #111827;">
+                                    API Token
+                                </h3>
+                                
+                                <div class="db-form-grid">
+                                    <!-- Token Field -->
+                                    <div class="db-form-group" style="grid-column: span 2;">
+                                        <label class="db-form-label">API Token</label>
+                                        <div style="display: flex; gap: 8px; align-items: center;">
+                                            <input type="text" 
+                                                   th:value="${user.apiToken != null ? user.apiToken : 'No token generated'}" 
+                                                   class="db-form-input"
+                                                   id="tokenDisplay"
+                                                   readonly
+                                                   style="flex: 1; font-family: monospace; font-size: 13px; background: #F9FAFB; color: #6B7280;">
+                                            <button type="button" 
+                                                    th:if="${user.apiToken != null}"
+                                                    class="db-btn db-btn-secondary" 
+                                                    onclick="copyToken()"
+                                                    title="Copy token">
+                                                <i class="fas fa-copy"></i>
+                                            </button>
+                                        </div>
+                                        <small th:if="${user.apiToken == null}" style="color: #6B7280; display: block; margin-top: 4px;">
+                                            Click "Generate Token" below to create an API token
+                                        </small>
+                                    </div>
+                                    
+                                    <!-- Expiration Date Field -->
+                                    <div class="db-form-group">
+                                        <label class="db-form-label">Token Expires At</label>
+                                        <input type="text" 
+                                               th:value="${user.tokenExpiresAt != null ? #temporals.format(user.tokenExpiresAt, 'dd/MM/yyyy HH:mm:ss') : 'N/A'}" 
+                                               class="db-form-input"
+                                               readonly
+                                               style="background: #F9FAFB; color: #6B7280;">
+                                    </div>
+                                    
+                                    <!-- Token Status -->
+                                    <div class="db-form-group">
+                                        <label class="db-form-label">Token Status</label>
+                                        <div>
+                                            <span th:if="${user.apiToken != null and user.tokenExpiresAt != null}" 
+                                                  class="db-badge-status"
+                                                  th:classappend="${#temporals.isAfter(user.tokenExpiresAt, #temporals.createNow()) ? 'db-badge-success' : 'db-badge-error'}">
+                                                <i th:class="${#temporals.isAfter(user.tokenExpiresAt, #temporals.createNow()) ? 'fas fa-check-circle' : 'fas fa-times-circle'}"></i>
+                                                <span th:text="${#temporals.isAfter(user.tokenExpiresAt, #temporals.createNow()) ? 'Active' : 'Expired'}">Status</span>
+                                            </span>
+                                            <span th:if="${user.apiToken == null}" class="db-badge-status db-badge-warning">
+                                                <i class="fas fa-exclamation-circle"></i>
+                                                No Token
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Token Management Actions (Edit Only) -->
+                            <div th:if="${isEdit}" style="margin-top: 24px;">
+                                <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 16px; color: #111827;">
+                                    Token Management
+                                </h3>
+                                
+                                <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                                    <button type="button" 
+                                            class="db-btn db-btn-primary" 
+                                            id="generateTokenBtn"
+                                            onclick="generateToken()"
+                                            th:data-user-id="${user.id}"
+                                            th:disabled="${!user.active}">
+                                        <i class="fas fa-key"></i>
+                                        <span th:text="${user.apiToken != null ? 'Regenerate Token' : 'Generate Token'}">Generate Token</span>
+                                    </button>
+                                    
+                                    <button type="button" 
+                                            th:if="${user.apiToken != null}"
+                                            class="db-btn db-btn-secondary" 
+                                            onclick="revokeToken()"
+                                            th:data-href="@{/system/users/{id}/revoke-token(id=${user.id})}">
+                                        <i class="fas fa-ban"></i>
+                                        Revoke Token
+                                    </button>
+                                    
+                                    <button type="button" 
+                                            th:if="${user.apiToken != null and user.active}"
+                                            class="db-btn db-btn-success" 
+                                            onclick="downloadCredentials()"
+                                            th:data-href="@{/system/users/{id}/download-credentials(id=${user.id})}">
+                                        <i class="fas fa-download"></i>
+                                        Download Credentials
+                                    </button>
+                                </div>
+                                
+                                <div th:if="${!user.active}" style="margin-top: 12px;">
+                                    <small style="color: #DC2626;">
+                                        <i class="fas fa-exclamation-triangle"></i>
+                                        Enable API must be enabled to generate tokens
+                                    </small>
+                                </div>
+                            </div>
+                            
+                            <!-- Form Actions -->
+                            <div class="db-form-actions" style="margin-top: 32px;">
+                                <button type="submit" class="db-btn db-btn-primary">
+                                    <i class="fas fa-save"></i>
+                                    <span th:text="${isEdit ? 'Update User' : 'Create User'}">Save</span>
+                                </button>
+                                <button type="button" class="db-btn db-btn-secondary" onclick="window.location.href='/system/users'">
+                                    <i class="fas fa-times"></i>
+                                    Cancel
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            
+            <script>
+                function toggleTokenGeneration() {
+                    const enableApiCheckbox = document.getElementById('enableApiCheckbox');
+                    const generateTokenBtn = document.getElementById('generateTokenBtn');
+                    
+                    if (generateTokenBtn) {
+                        generateTokenBtn.disabled = !enableApiCheckbox.checked;
+                    }
+                }
+                
+                // Initialize on page load
+                document.addEventListener('DOMContentLoaded', function() {
+                    toggleTokenGeneration();
+                });
+                
+                function generateToken() {
+                    const button = event.target.closest('button');
+                    const userId = button.dataset.userId;
+                    const enableApiCheckbox = document.getElementById('enableApiCheckbox');
+                    
+                    if (!enableApiCheckbox.checked) {
+                        alert('Enable API must be enabled to generate tokens.\nPlease check "Enable API" checkbox and save the user first.');
+                        return;
+                    }
+                    
+                    if (!confirm('Generate a new API token? The old token (if any) will be invalidated.')) {
+                        return;
+                    }
+                    
+                    button.disabled = true;
+                    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+                    
+                    // Get CSRF token from meta tag or cookie
+                    const csrfToken = document.querySelector('meta[name="_csrf"]')?.content;
+                    const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.content;
+                    
+                    const headers = {
+                        'Content-Type': 'application/json'
+                    };
+                    
+                    // Add CSRF token to headers if available
+                    if (csrfToken && csrfHeader) {
+                        headers[csrfHeader] = csrfToken;
+                    }
+                    
+                    fetch('/system/users/' + userId + '/generate-token', {
+                        method: 'POST',
+                        headers: headers
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            return response.text().then(text => { throw new Error(text) });
+                        }
+                        return response.text();
+                    })
+                    .then(token => {
+                        alert('Token generated successfully!\n\nToken: ' + token + '\n\nLength: ' + token.length + ' characters\n\nThis is the only time you will see this token. Make sure to save it!');
+                        window.location.reload();
+                    })
+                    .catch(error => {
+                        alert('Error generating token: ' + error.message);
+                        button.disabled = false;
+                        button.innerHTML = '<i class="fas fa-key"></i> Generate Token';
+                    });
+                }
+                
+                function revokeToken() {
+                    if (!confirm('Are you sure you want to revoke this API token? This action cannot be undone.')) {
+                        return;
+                    }
+                    
+                    const button = event.target.closest('button');
+                    window.location.href = button.dataset.href;
+                }
+                
+                function copyToken() {
+                    const tokenInput = document.getElementById('tokenDisplay');
+                    tokenInput.select();
+                    document.execCommand('copy');
+                    
+                    const button = event.target.closest('button');
+                    const originalHTML = button.innerHTML;
+                    button.innerHTML = '<i class="fas fa-check"></i>';
+                    
+                    setTimeout(() => {
+                        button.innerHTML = originalHTML;
+                    }, 2000);
+                }
+                
+                function downloadCredentials() {
+                    const button = event.target.closest('button');
+                    window.location.href = button.dataset.href;
+                }
+            </script>
+        </th:block>
+    </th:block>
+</body>
+</html>
+

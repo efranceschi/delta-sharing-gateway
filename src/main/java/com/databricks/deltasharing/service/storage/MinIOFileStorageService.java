@@ -180,17 +180,39 @@ public class MinIOFileStorageService implements FileStorageService {
     private String resolveTablePrefix(DeltaTable table) {
         String location = table.getLocation();
         
-        // Remove leading slash if present
-        if (location != null && location.startsWith("/")) {
+        if (location == null || location.isEmpty()) {
+            return table.getName() + "/";
+        }
+        
+        // Handle s3:// prefix
+        if (location.startsWith("s3://")) {
+            // Extract path after bucket name: s3://bucket/path/to/table -> path/to/table
+            String withoutProtocol = location.substring(5); // Remove "s3://"
+            int firstSlash = withoutProtocol.indexOf('/');
+            
+            if (firstSlash > 0) {
+                // Extract bucket name for validation (optional)
+                String bucketInLocation = withoutProtocol.substring(0, firstSlash);
+                location = withoutProtocol.substring(firstSlash + 1); // Path after bucket
+                
+                log.debug("Resolved S3 location: bucket={}, path={}", bucketInLocation, location);
+            } else {
+                // Only bucket name, no path
+                location = "";
+            }
+        }
+        
+        // Remove leading slash if present (for non-S3 paths)
+        if (location.startsWith("/")) {
             location = location.substring(1);
         }
         
         // Ensure trailing slash
-        if (location != null && !location.isEmpty() && !location.endsWith("/")) {
+        if (!location.isEmpty() && !location.endsWith("/")) {
             location = location + "/";
         }
         
-        return location != null ? location : table.getName() + "/";
+        return !location.isEmpty() ? location : table.getName() + "/";
     }
     
     /**

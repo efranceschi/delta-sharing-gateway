@@ -27,4 +27,6 @@ public interface DeltaTableRepository extends JpaRepository<DeltaTable, Long> {
     
     @Query("SELECT t FROM DeltaTable t WHERE t.schema.share.name = :shareName")
     List<DeltaTable> findByShareName(@Param("shareName") String shareName);
+    
+    List<DeltaTable> findBySchemaId(Long schemaId);
 }

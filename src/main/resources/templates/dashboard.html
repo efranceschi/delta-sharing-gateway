@@ -1,146 +1,66 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Delta Sharing OnPrem</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔷</text></svg>">
-    <link rel="stylesheet" th:href="@{/css/admin.css}">
 </head>
 <body>
-    <div class="admin-layout">
-        <!-- Sidebar -->
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <h1>🔷 Delta Sharing OnPrem</h1>
-            </div>
-            <nav class="sidebar-nav">
-                <div class="nav-section">
-                    <div class="nav-section-title">Main</div>
-                    <a href="/" class="nav-link active">
-                        <span class="nav-icon">📊</span>
-                        <span>Dashboard</span>
-                    </a>
-                </div>
-                <div class="nav-section">
-                    <div class="nav-section-title">Management</div>
-                    <a href="/admin/shares" class="nav-link">
-                        <span class="nav-icon">🗂️</span>
-                        <span>Shares</span>
-                    </a>
-                    <a href="/admin/schemas" class="nav-link">
-                        <span class="nav-icon">📁</span>
-                        <span>Schemas</span>
-                    </a>
-                    <a href="/admin/tables" class="nav-link">
-                        <span class="nav-icon">📋</span>
-                        <span>Tables</span>
-                    </a>
-                </div>
-                <div class="nav-section">
-                    <div class="nav-section-title">API</div>
-                    <a href="/swagger-ui.html" class="nav-link" target="_blank">
-                        <span class="nav-icon">📡</span>
-                        <span>API Docs</span>
-                    </a>
-                    <a href="/h2-console" class="nav-link" target="_blank">
-                        <span class="nav-icon">💾</span>
-                        <span>Database</span>
-                    </a>
+    <th:block th:replace="~{layout :: layout(~{::title}, ~{::content})}">
+        <title>Dashboard</title>
+        
+        <th:block th:fragment="content">
+            <!-- Breadcrumb -->
+            <nav class="db-breadcrumb">
+                <div class="db-breadcrumb-item">
+                    <span class="db-breadcrumb-current"><i class="fas fa-home"></i> Home</span>
                 </div>
             </nav>
-        </aside>
-
-        <!-- Main Content -->
-        <main class="main-content">
-            <!-- Topbar -->
-            <div class="topbar">
-                <h2 class="topbar-title">Dashboard</h2>
-                <div class="topbar-actions">
-                    <span class="badge badge-info">v<span th:text="${version}">1.0.0</span></span>
+            
+            <!-- Top Bar -->
+            <header class="db-topbar">
+                <div class="db-topbar-left">
+                    <h1 class="db-topbar-title">Dashboard</h1>
                 </div>
-            </div>
-
+            </header>
+            
             <!-- Content -->
-            <div class="content">
-                <!-- Stats Grid -->
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-icon primary">🗂️</div>
-                        <div class="stat-content">
-                            <h3 th:text="${sharesCount}">0</h3>
-                            <p>Total Shares</p>
+            <div class="db-content" style="background: #F9FAFB;">
+                <!-- Statistics Cards -->
+                <div style="padding: 24px; display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
+                    <!-- Shares Card -->
+                    <div class="db-stat-card">
+                        <div class="db-stat-icon" style="background: rgba(59, 130, 246, 0.1); color: #3B82F6;">
+                            <i class="fas fa-folder"></i>
+                        </div>
+                        <div class="db-stat-content">
+                            <div class="db-stat-label">Shares</div>
+                            <div class="db-stat-value" th:text="${sharesCount ?: 0}">0</div>
                         </div>
                     </div>
-                    <div class="stat-card">
-                        <div class="stat-icon success">📁</div>
-                        <div class="stat-content">
-                            <h3 th:text="${schemasCount}">0</h3>
-                            <p>Total Schemas</p>
+                    
+                    <!-- Schemas Card -->
+                    <div class="db-stat-card">
+                        <div class="db-stat-icon" style="background: rgba(139, 92, 246, 0.1); color: #8B5CF6;">
+                            <i class="fas fa-layer-group"></i>
+                        </div>
+                        <div class="db-stat-content">
+                            <div class="db-stat-label">Schemas</div>
+                            <div class="db-stat-value" th:text="${schemasCount ?: 0}">0</div>
                         </div>
                     </div>
-                    <div class="stat-card">
-                        <div class="stat-icon warning">📋</div>
-                        <div class="stat-content">
-                            <h3 th:text="${tablesCount}">0</h3>
-                            <p>Total Tables</p>
+                    
+                    <!-- Tables Card -->
+                    <div class="db-stat-card">
+                        <div class="db-stat-icon" style="background: rgba(16, 185, 129, 0.1); color: #10B981;">
+                            <i class="fas fa-table"></i>
                         </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon info">✅</div>
-                        <div class="stat-content">
-                            <h3>Active</h3>
-                            <p>System Status</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Quick Actions -->
-                <div class="card">
-                    <div class="card-header">
-                        <h3 class="card-title">Quick Actions</h3>
-                    </div>
-                    <div class="card-body">
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
-                            <a href="/admin/shares/new" class="btn btn-primary">
-                                ➕ Create Share
-                            </a>
-                            <a href="/admin/schemas/new" class="btn btn-primary">
-                                ➕ Create Schema
-                            </a>
-                            <a href="/admin/tables/new" class="btn btn-primary">
-                                ➕ Create Table
-                            </a>
-                            <a href="/swagger-ui.html" class="btn btn-secondary" target="_blank">
-                                📡 API Documentation
-                            </a>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Getting Started -->
-                <div class="card" style="margin-top: 2rem;">
-                    <div class="card-header">
-                        <h3 class="card-title">🚀 Getting Started</h3>
-                    </div>
-                    <div class="card-body">
-                        <h4 style="margin-bottom: 1rem; font-size: 1rem; font-weight: 600;">Test the Delta Sharing API:</h4>
-                        <div style="background: #1F2937; color: #F9FAFB; padding: 1rem; border-radius: 0.375rem; font-family: monospace; font-size: 0.875rem; overflow-x: auto;">
-                            <div style="margin-bottom: 0.5rem;"># Set your token</div>
-                            <div style="margin-bottom: 1rem;">export TOKEN="test"</div>
-                            <div style="margin-bottom: 0.5rem;"># List all shares</div>
-                            <div>curl -H "Authorization: Bearer $TOKEN" \</div>
-                            <div style="margin-left: 2rem;">http://localhost:8080/delta-sharing/shares | jq</div>
-                        </div>
-                        <div style="margin-top: 1rem;">
-                            <a href="/swagger-ui.html" class="btn btn-primary" target="_blank">
-                                View Full API Documentation →
-                            </a>
+                        <div class="db-stat-content">
+                            <div class="db-stat-label">Tables</div>
+                            <div class="db-stat-value" th:text="${tablesCount ?: 0}">0</div>
                         </div>
                     </div>
                 </div>
             </div>
-        </main>
-    </div>
+        </th:block>
+    </th:block>
 </body>
 </html>

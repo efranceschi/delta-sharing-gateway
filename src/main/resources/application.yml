@@ -34,10 +34,14 @@ springdoc:
 # Delta Sharing Configuration - Common
 delta:
   sharing:
-    auth:
-      enabled: true
-      # Configure your bearer token here (leave empty for development mode)
-      bearer-token: ${DELTA_SHARING_TOKEN:}
+    # Endpoint FQDN for credential file generation
+    # This will be used in the downloadable credential file
+    endpoint-fqdn: ${DELTA_SHARING_ENDPOINT:http://localhost:8080/delta-sharing}
+    
+    # API Token Configuration
+    token:
+      # Token expiration in days
+      expiration-days: ${TOKEN_EXPIRATION_DAYS:365}
 
 ---
 # =============================================================================
@@ -83,6 +87,19 @@ spring:
 # Delta Sharing Configuration - Development
 delta:
   sharing:
+    # Authentication Configuration (Development Only)
+    auth:
+      enabled: true
+      # Legacy bearer token for backward compatibility in development
+      # This is the same token used by the admin user in dev mode
+      bearer-token: dss_0000000000000000000000000000000000000000000000000000000000000
+    
+    # Default Admin User Configuration (Development Only)
+    admin:
+      # Default password for the admin user (first initialization only)
+      # This is only set in development for convenience
+      default-password: DeltaSharing@Databricks
+    
     storage:
       # Use FAKE storage in development
       type: fake
@@ -147,6 +164,14 @@ spring:
 # Delta Sharing Configuration - Production
 delta:
   sharing:
+    # Authentication Configuration (Production)
+    # No default bearer token in production for security reasons
+    # If you want to use a legacy bearer token, configure it via environment variable:
+    #   export DELTA_SHARING_ADMIN_TOKEN="your-token-here"
+    auth:
+      enabled: true
+      bearer-token: ${DELTA_SHARING_ADMIN_TOKEN:}
+    
     storage:
       # Use MinIO storage in production
       type: minio
