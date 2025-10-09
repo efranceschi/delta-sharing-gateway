@@ -11,6 +11,25 @@
 
 ---
 
+## ⚠️ Disclaimer
+
+> **IMPORTANT: NO WARRANTY AND NO SUPPORT**
+>
+> This software is provided "AS IS", without warranty of any kind, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose and noninfringement. In no event shall the authors or copyright holders be liable for any claim, damages or other liability, whether in an action of contract, tort or otherwise, arising from, out of or in connection with the software or the use or other dealings in the software.
+>
+> **USE AT YOUR OWN RISK**: This project is an independent implementation of the Delta Sharing Protocol and is not officially supported or endorsed by Databricks, Inc. There is no official support channel, and users are responsible for their own deployment, maintenance, and security.
+>
+> By using this software, you acknowledge that:
+> - ❌ **No official support** is provided
+> - ❌ **No warranty** or guarantee of any kind
+> - ✅ You assume **full responsibility** for any risks
+> - ✅ You are responsible for **security, compliance, and data protection**
+> - ✅ You should thoroughly **test in non-production** environments first
+>
+> For production use cases requiring enterprise support, please refer to official Databricks Delta Sharing solutions.
+
+---
+
 ## 🌟 Key Features
 
 ### Delta Lake Integration
