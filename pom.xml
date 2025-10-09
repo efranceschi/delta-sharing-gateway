@@ -13,9 +13,9 @@
     </parent>
     
     <groupId>com.databricks</groupId>
-    <artifactId>delta-sharing-onprem</artifactId>
+    <artifactId>delta-sharing-gateway</artifactId>
     <version>1.0.0</version>
-    <name>Delta Sharing OnPrem</name>
+    <name>Delta Sharing Gateway</name>
     <description>Modern Web Application with REST API using Spring Boot</description>
     
     <properties>
@@ -176,6 +176,7 @@
     </dependencies>
     
     <build>
+        <finalName>${project.artifactId}</finalName>
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
