@@ -164,6 +164,10 @@ spring:
 # Delta Sharing Configuration - Production
 delta:
   sharing:
+
+    admin:
+      default-password: ${DELTA_SHARING_ADMIN_PASSWORD:}
+
     # Authentication Configuration (Production)
     # No default bearer token in production for security reasons
     # If you want to use a legacy bearer token, configure it via environment variable:
