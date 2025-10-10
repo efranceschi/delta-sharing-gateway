@@ -36,7 +36,10 @@ delta:
   sharing:
     # Endpoint FQDN for credential file generation
     # This will be used in the downloadable credential file
-    endpoint-fqdn: ${DELTA_SHARING_ENDPOINT:http://localhost:8080/delta-sharing}
+    # IMPORTANT: In production, this MUST be configured to a public endpoint
+    #            Localhost is only allowed in development
+    # Example: https://data.company.com/delta-sharing
+    endpoint-fqdn: ${DELTA_SHARING_ENDPOINT:}
     
     # API Token Configuration
     token:
@@ -90,6 +93,10 @@ spring:
 # Delta Sharing Configuration - Development
 delta:
   sharing:
+    # Endpoint FQDN (Development Only)
+    # Localhost is allowed in development
+    endpoint-fqdn: http://localhost:8080/delta-sharing
+    
     # Authentication Configuration (Development Only)
     auth:
       enabled: true
@@ -162,7 +169,18 @@ spring:
 # Delta Sharing Configuration - Production
 delta:
   sharing:
-
+    # Endpoint FQDN (REQUIRED in Production)
+    # This MUST be configured to a public endpoint accessible by clients
+    # Localhost is NOT allowed in production
+    # 
+    # Configure via environment variable:
+    #   export DELTA_SHARING_ENDPOINT=https://data.company.com/delta-sharing
+    # 
+    # Or directly in this file:
+    #   endpoint-fqdn: https://data.company.com/delta-sharing
+    # 
+    # If not configured, the application will FAIL to start
+    
     admin:
       default-password: ${DELTA_SHARING_ADMIN_PASSWORD:}
 
@@ -183,11 +201,11 @@ delta:
       
       minio:
         enabled: true
-        endpoint: ${MINIO_ENDPOINT:https://minio.your-domain.com}
-        access-key: ${MINIO_ACCESS_KEY:}
-        secret-key: ${MINIO_SECRET_KEY:}
-        bucket: ${MINIO_BUCKET:delta-sharing}
-        url-expiration-minutes: ${MINIO_URL_EXPIRATION:60}
+        endpoint: ${DELTA_SHARING_STORAGE_MINIO_ENDPOINT:https://minio.your-domain.com}
+        access-key: ${DELTA_SHARING_STORAGE_MINIO_ACCESS_KEY:}
+        secret-key: ${DELTA_SHARING_STORAGE_MINIO_SECRET_KEY:}
+        bucket: ${DELTA_SHARING_STORAGE_MINIO_BUCKET:delta-sharing}
+        url-expiration-minutes: ${DELTA_SHARING_STORAGE_MINIO_URL_EXPIRATION_MINUTES:60}
         # Use HTTPS for MinIO in production
         use-ssl: true
       
@@ -195,9 +213,9 @@ delta:
       http:
         enabled: true
         # Base URL for serving Parquet files via HTTP
-        base-url: ${HTTP_BASE_URL:https://data.your-domain.com}
+        base-url: ${DELTA_SHARING_STORAGE_HTTP_BASE_URL:https://data.your-domain.com}
         # Local filesystem path where Delta tables are stored
-        base-path: ${HTTP_BASE_PATH:/data/delta-tables}
+        base-path: ${DELTA_SHARING_STORAGE_HTTP_BASE_PATH:/data/delta-tables}
         # Enable Delta transaction log reading
         use-delta-log: true
 
