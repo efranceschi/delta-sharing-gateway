@@ -99,9 +99,6 @@ public class SecurityConfig {
     public SecurityFilterChain webSecurityFilterChain(HttpSecurity http) throws Exception {
         http
             .securityMatcher("/**")
-            .csrf(csrf -> csrf
-                .ignoringRequestMatchers("/h2-console/**") // Disable CSRF for H2 console
-            )
             .authorizeHttpRequests(auth -> auth
                 // Public resources
                 .requestMatchers(
@@ -110,7 +107,6 @@ public class SecurityConfig {
                     "/js/**",
                     "/images/**",
                     "/favicon.ico",
-                    "/h2-console/**",
                     "/fake-files/**"  // Allow public access to fake Parquet files
                 ).permitAll()
                 // All other web pages require authentication
@@ -136,9 +132,6 @@ public class SecurityConfig {
                 .sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED)
                 .maximumSessions(1)
                 .maxSessionsPreventsLogin(false)
-            )
-            .headers(headers -> headers
-                .frameOptions(frame -> frame.sameOrigin()) // For H2 console
             )
             .authenticationProvider(authenticationProvider());
         
