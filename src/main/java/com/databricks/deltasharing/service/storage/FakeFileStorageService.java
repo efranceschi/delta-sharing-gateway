@@ -285,6 +285,14 @@ public class FakeFileStorageService implements FileStorageService {
     }
     
     /**
+     * Get the schema for a table (interface implementation)
+     */
+    @Override
+    public String getTableSchema(String tableName, String format) {
+        return generateFakeSchema(tableName, format);
+    }
+    
+    /**
      * Generate a fake schema string based on table name and format.
      * Creates a realistic Delta/Parquet schema with varied column types and metadata.
      */
@@ -387,10 +395,313 @@ public class FakeFileStorageService implements FileStorageService {
     }
     
     /**
-     * Get partition columns based on table name.
+     * Get partition columns based on table name (interface implementation).
      * Returns a list of column names that should be used for partitioning.
      */
+    @Override
     public String[] getPartitionColumns(String tableName) {
         return selectPartitionPattern(tableName);
+    }
+    
+    /**
+     * Inner static class for generating Parquet files with fake data.
+     * Converts Delta schemas to Avro schemas and writes Parquet files.
+     */
+    @Slf4j
+    static class ParquetFileGenerator {
+
+        private static final com.fasterxml.jackson.databind.ObjectMapper objectMapper = 
+            new com.fasterxml.jackson.databind.ObjectMapper();
+        private static final Random random = new Random();
+
+        /**
+         * Generate a Parquet file with fake data based on the provided schema
+         *
+         * @param schemaJson Delta schema in JSON format
+         * @param outputFile Output Parquet file
+         * @param numRecords Number of records to generate
+         * @param partitionValues Partition values for this file
+         * @return Statistics about the generated file
+         */
+        static Map<String, Object> generateParquetFile(
+                String schemaJson,
+                File outputFile,
+                long numRecords,
+                Map<String, String> partitionValues) throws IOException {
+
+            log.debug("Generating Parquet file: {} with {} records", outputFile.getName(), numRecords);
+
+            // Parse Delta schema to Avro schema
+            org.apache.avro.Schema avroSchema = deltaSchemaToAvroSchema(schemaJson);
+
+            // Create Parquet writer
+            org.apache.hadoop.fs.Path path = new org.apache.hadoop.fs.Path(outputFile.toURI());
+            org.apache.hadoop.conf.Configuration conf = new org.apache.hadoop.conf.Configuration();
+            
+            try (org.apache.parquet.hadoop.ParquetWriter<org.apache.avro.generic.GenericRecord> writer = 
+                    org.apache.parquet.avro.AvroParquetWriter
+                    .<org.apache.avro.generic.GenericRecord>builder(path)
+                    .withSchema(avroSchema)
+                    .withConf(conf)
+                    .withCompressionCodec(org.apache.parquet.hadoop.metadata.CompressionCodecName.SNAPPY)
+                    .build()) {
+
+                // Statistics tracking
+                Map<String, Object> minValues = new HashMap<>();
+                Map<String, Object> maxValues = new HashMap<>();
+                Map<String, Integer> nullCount = new HashMap<>();
+
+                // Generate records
+                for (long i = 0; i < numRecords; i++) {
+                    org.apache.avro.generic.GenericRecord record = generateRecord(avroSchema, i, partitionValues);
+                    writer.write(record);
+
+                    // Update statistics
+                    updateStatistics(record, avroSchema, minValues, maxValues, nullCount);
+                }
+
+                log.info("Generated Parquet file: {} ({} records, {} bytes)",
+                        outputFile.getName(), numRecords, outputFile.length());
+
+                // Return statistics
+                Map<String, Object> stats = new HashMap<>();
+                stats.put("numRecords", numRecords);
+                stats.put("minValues", minValues);
+                stats.put("maxValues", maxValues);
+                stats.put("nullCount", nullCount);
+                return stats;
+            }
+        }
+
+        /**
+         * Convert Delta schema JSON to Avro Schema
+         */
+        private static org.apache.avro.Schema deltaSchemaToAvroSchema(String schemaJson) throws IOException {
+            com.fasterxml.jackson.databind.JsonNode deltaSchema = objectMapper.readTree(schemaJson);
+            
+            // Build Avro schema
+            List<org.apache.avro.Schema.Field> fields = new ArrayList<>();
+            com.fasterxml.jackson.databind.JsonNode fieldsNode = deltaSchema.get("fields");
+            
+            if (fieldsNode != null && fieldsNode.isArray()) {
+                for (com.fasterxml.jackson.databind.JsonNode field : fieldsNode) {
+                    String name = field.get("name").asText();
+                    String type = field.get("type").asText();
+                    boolean nullable = field.get("nullable").asBoolean(true);
+                    
+                    org.apache.avro.Schema fieldSchema = deltaTypeToAvroType(type, nullable);
+                    // No default value for Avro fields
+                    fields.add(new org.apache.avro.Schema.Field(name, fieldSchema, null, (Object) null));
+                }
+            }
+            
+            return org.apache.avro.Schema.createRecord("DeltaTable", "Generated from Delta schema", 
+                "com.databricks.delta", false, fields);
+        }
+
+        /**
+         * Convert Delta type to Avro type
+         */
+        private static org.apache.avro.Schema deltaTypeToAvroType(String deltaType, boolean nullable) {
+            org.apache.avro.Schema baseSchema;
+            
+            switch (deltaType.toLowerCase()) {
+                case "long":
+                case "bigint":
+                    baseSchema = org.apache.avro.Schema.create(org.apache.avro.Schema.Type.LONG);
+                    break;
+                case "integer":
+                case "int":
+                    baseSchema = org.apache.avro.Schema.create(org.apache.avro.Schema.Type.INT);
+                    break;
+                case "double":
+                    baseSchema = org.apache.avro.Schema.create(org.apache.avro.Schema.Type.DOUBLE);
+                    break;
+                case "float":
+                    baseSchema = org.apache.avro.Schema.create(org.apache.avro.Schema.Type.FLOAT);
+                    break;
+                case "boolean":
+                    baseSchema = org.apache.avro.Schema.create(org.apache.avro.Schema.Type.BOOLEAN);
+                    break;
+                case "string":
+                    baseSchema = org.apache.avro.Schema.create(org.apache.avro.Schema.Type.STRING);
+                    break;
+                case "timestamp":
+                    // Timestamp as long (milliseconds since epoch)
+                    baseSchema = org.apache.avro.Schema.create(org.apache.avro.Schema.Type.LONG);
+                    break;
+                default:
+                    if (deltaType.startsWith("decimal")) {
+                        // Decimal as double for simplicity
+                        baseSchema = org.apache.avro.Schema.create(org.apache.avro.Schema.Type.DOUBLE);
+                    } else {
+                        // Default to string
+                        baseSchema = org.apache.avro.Schema.create(org.apache.avro.Schema.Type.STRING);
+                    }
+            }
+            
+            return nullable ? org.apache.avro.Schema.createUnion(
+                org.apache.avro.Schema.create(org.apache.avro.Schema.Type.NULL), baseSchema) : baseSchema;
+        }
+
+        /**
+         * Generate a single record with fake data
+         */
+        private static org.apache.avro.generic.GenericRecord generateRecord(
+                org.apache.avro.Schema schema, long recordIndex, Map<String, String> partitionValues) {
+            org.apache.avro.generic.GenericRecord record = new org.apache.avro.generic.GenericData.Record(schema);
+            
+            for (org.apache.avro.Schema.Field field : schema.getFields()) {
+                String fieldName = field.name();
+                org.apache.avro.Schema fieldSchema = field.schema();
+                
+                // Check if this is a partition column
+                if (partitionValues.containsKey(fieldName)) {
+                    Object value = convertPartitionValue(partitionValues.get(fieldName), fieldSchema);
+                    record.put(fieldName, value);
+                    continue;
+                }
+                
+                // Generate fake value based on field name and type
+                Object value = generateFieldValue(fieldName, fieldSchema, recordIndex);
+                record.put(fieldName, value);
+            }
+            
+            return record;
+        }
+
+        /**
+         * Convert partition value string to appropriate type
+         */
+        private static Object convertPartitionValue(String value, org.apache.avro.Schema schema) {
+            org.apache.avro.Schema.Type type = schema.getType();
+            
+            if (type == org.apache.avro.Schema.Type.UNION) {
+                // Get non-null type from union
+                for (org.apache.avro.Schema s : schema.getTypes()) {
+                    if (s.getType() != org.apache.avro.Schema.Type.NULL) {
+                        return convertPartitionValue(value, s);
+                    }
+                }
+            }
+            
+            try {
+                switch (type) {
+                    case LONG:
+                        return Long.parseLong(value);
+                    case INT:
+                        return Integer.parseInt(value);
+                    case DOUBLE:
+                        return Double.parseDouble(value);
+                    case FLOAT:
+                        return Float.parseFloat(value);
+                    case BOOLEAN:
+                        return Boolean.parseBoolean(value);
+                    case STRING:
+                    default:
+                        return value;
+                }
+            } catch (NumberFormatException e) {
+                return value; // Return as string if conversion fails
+            }
+        }
+
+        /**
+         * Generate fake value for a field
+         */
+        private static Object generateFieldValue(String fieldName, org.apache.avro.Schema schema, long recordIndex) {
+            org.apache.avro.Schema.Type type = schema.getType();
+            
+            // Handle union types (nullable fields)
+            if (type == org.apache.avro.Schema.Type.UNION) {
+                // 10% chance of null for nullable fields
+                if (random.nextDouble() < 0.1) {
+                    return null;
+                }
+                // Get non-null type
+                for (org.apache.avro.Schema s : schema.getTypes()) {
+                    if (s.getType() != org.apache.avro.Schema.Type.NULL) {
+                        return generateFieldValue(fieldName, s, recordIndex);
+                    }
+                }
+            }
+            
+            // Generate value based on field name patterns
+            if (fieldName.equals("id")) {
+                return recordIndex;
+            } else if (fieldName.contains("timestamp") || fieldName.contains("_at")) {
+                return System.currentTimeMillis() - (random.nextInt(86400000)); // Within last 24 hours
+            } else if (fieldName.contains("amount") || fieldName.contains("price") || fieldName.contains("value")) {
+                return type == org.apache.avro.Schema.Type.LONG ? 
+                       random.nextLong(1000) + 1 : 
+                       Math.round(random.nextDouble() * 1000 * 100.0) / 100.0;
+            } else if (fieldName.contains("count") || fieldName.contains("quantity")) {
+                return type == org.apache.avro.Schema.Type.LONG ? random.nextLong(100) + 1 : random.nextInt(100) + 1;
+            } else if (fieldName.contains("name")) {
+                return "Name_" + recordIndex;
+            } else if (fieldName.contains("status")) {
+                String[] statuses = {"active", "inactive", "pending", "completed"};
+                return statuses[random.nextInt(statuses.length)];
+            } else if (fieldName.contains("category")) {
+                String[] categories = {"A", "B", "C", "D"};
+                return categories[random.nextInt(categories.length)];
+            } else if (fieldName.contains("description")) {
+                return "Description for record " + recordIndex;
+            } else if (fieldName.contains("data")) {
+                return "Data_" + recordIndex + "_" + UUID.randomUUID().toString().substring(0, 8);
+            }
+            
+            // Generate based on type
+            switch (type) {
+                case LONG:
+                    return recordIndex * 1000 + random.nextInt(1000);
+                case INT:
+                    return (int) (recordIndex % 1000000);
+                case DOUBLE:
+                    return recordIndex + random.nextDouble();
+                case FLOAT:
+                    return (float) (recordIndex + random.nextFloat());
+                case BOOLEAN:
+                    return random.nextBoolean();
+                case STRING:
+                default:
+                    return "value_" + recordIndex;
+            }
+        }
+
+        /**
+         * Update statistics for a record
+         */
+        private static void updateStatistics(
+                org.apache.avro.generic.GenericRecord record,
+                org.apache.avro.Schema schema,
+                Map<String, Object> minValues,
+                Map<String, Object> maxValues,
+                Map<String, Integer> nullCount) {
+            
+            for (org.apache.avro.Schema.Field field : schema.getFields()) {
+                String fieldName = field.name();
+                Object value = record.get(fieldName);
+                
+                if (value == null) {
+                    nullCount.put(fieldName, nullCount.getOrDefault(fieldName, 0) + 1);
+                    continue;
+                }
+                
+                nullCount.putIfAbsent(fieldName, 0);
+                
+                // Update min/max for comparable types
+                if (value instanceof Comparable) {
+                    if (!minValues.containsKey(fieldName) || 
+                        ((Comparable) value).compareTo(minValues.get(fieldName)) < 0) {
+                        minValues.put(fieldName, value);
+                    }
+                    if (!maxValues.containsKey(fieldName) || 
+                        ((Comparable) value).compareTo(maxValues.get(fieldName)) > 0) {
+                        maxValues.put(fieldName, value);
+                    }
+                }
+            }
+        }
     }
 }

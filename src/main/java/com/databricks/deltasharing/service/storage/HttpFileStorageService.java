@@ -24,11 +24,18 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * HTTP-based file storage service implementation.
- * Serves files through a generic HTTP server without temporary token signing.
- * URLs are constructed based on a configurable base URL and file paths.
+ * HTTP-based file storage service implementation for local Delta Lake tables.
  * 
- * Supports Delta Lake transaction log reading and data skipping.
+ * This service:
+ * - Reads Delta Lake tables from local filesystem (basePath)
+ * - Reads schemas and partition columns from Delta transaction log (_delta_log/*.json)
+ * - Serves files through a generic HTTP server without temporary token signing
+ * - Constructs HTTP URLs based on configurable baseUrl
+ * - Supports Delta Lake transaction log reading and data skipping
+ * 
+ * Configuration:
+ * - basePath: Local filesystem path where Delta tables are stored
+ * - baseUrl: HTTP base URL for serving Parquet files
  */
 @Service
 @Slf4j
@@ -228,5 +235,89 @@ public class HttpFileStorageService implements FileStorageService {
     @Override
     public boolean isAvailable() {
         return enabled && baseUrl != null && !baseUrl.isEmpty();
+    }
+    
+    /**
+     * Get table schema from Delta log metadata
+     * For HTTP storage, we read the schema from the Delta transaction log
+     */
+    @Override
+    public String getTableSchema(String tableName, String format) {
+        log.debug("Getting schema for table: {} (format: {}) from Delta log", tableName, format);
+        
+        if (deltaLogReader == null) {
+            log.warn("DeltaLogReader not available, cannot read schema");
+            throw new IllegalStateException("DeltaLogReader is required for HTTP storage");
+        }
+        
+        try {
+            // Construct table location
+            String tableLocation = resolveTableLocationByName(tableName);
+            
+            // Read Delta log to get metadata
+            DeltaSnapshot snapshot = deltaLogReader.readDeltaLog(tableLocation, null);
+            
+            if (snapshot.getMetadata() != null && snapshot.getMetadata().getSchemaString() != null) {
+                log.debug("Schema read from Delta log for table: {}", tableName);
+                return snapshot.getMetadata().getSchemaString();
+            } else {
+                log.warn("No schema found in Delta log for table: {}", tableName);
+                throw new IllegalStateException("Schema not found in Delta log for table: " + tableName);
+            }
+            
+        } catch (Exception e) {
+            log.error("Failed to read schema from Delta log for table: {}", tableName, e);
+            throw new RuntimeException("Failed to read schema from Delta log: " + e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * Get partition columns from Delta log metadata
+     * For HTTP storage, we read partition info from the Delta transaction log
+     */
+    @Override
+    public String[] getPartitionColumns(String tableName) {
+        log.debug("Getting partition columns for table: {} from Delta log", tableName);
+        
+        if (deltaLogReader == null) {
+            log.warn("DeltaLogReader not available, cannot read partition columns");
+            return new String[0];
+        }
+        
+        try {
+            // Construct table location
+            String tableLocation = resolveTableLocationByName(tableName);
+            
+            // Read Delta log to get metadata
+            DeltaSnapshot snapshot = deltaLogReader.readDeltaLog(tableLocation, null);
+            
+            if (snapshot.getMetadata() != null && snapshot.getMetadata().getPartitionColumns() != null) {
+                List<String> partitionColumns = snapshot.getMetadata().getPartitionColumns();
+                log.debug("Partition columns read from Delta log for table {}: {}", 
+                         tableName, partitionColumns);
+                return partitionColumns.toArray(new String[0]);
+            } else {
+                log.debug("No partition columns found in Delta log for table: {}", tableName);
+                return new String[0];
+            }
+            
+        } catch (Exception e) {
+            log.warn("Failed to read partition columns from Delta log for table: {}", tableName, e);
+            return new String[0];
+        }
+    }
+    
+    /**
+     * Resolve table location by name
+     * Helper method for schema and partition column lookup
+     */
+    private String resolveTableLocationByName(String tableName) {
+        // If basePath is configured, use it as root
+        if (basePath != null && !basePath.isEmpty()) {
+            return Paths.get(basePath, tableName).toString();
+        }
+        
+        // Otherwise, use table name as relative path
+        return tableName;
     }
 }

@@ -24,6 +24,23 @@ public interface FileStorageService {
                                       List<String> predicateHints, Integer limitHint);
     
     /**
+     * Generate or retrieve the schema for a table
+     * 
+     * @param tableName The name of the table
+     * @param format The format of the table (delta or parquet)
+     * @return JSON string representation of the schema
+     */
+    String getTableSchema(String tableName, String format);
+    
+    /**
+     * Get partition columns for a table
+     * 
+     * @param tableName The name of the table
+     * @return Array of partition column names
+     */
+    String[] getPartitionColumns(String tableName);
+    
+    /**
      * Get the storage type identifier
      * 
      * @return String identifier for the storage type (e.g., "fake", "minio", "http")

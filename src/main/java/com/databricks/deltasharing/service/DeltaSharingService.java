@@ -8,7 +8,6 @@ import com.databricks.deltasharing.model.DeltaTable;
 import com.databricks.deltasharing.repository.DeltaSchemaRepository;
 import com.databricks.deltasharing.repository.DeltaShareRepository;
 import com.databricks.deltasharing.repository.DeltaTableRepository;
-import com.databricks.deltasharing.service.storage.FakeFileStorageService;
 import com.databricks.deltasharing.service.storage.FileStorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -173,15 +172,12 @@ public class DeltaSharingService {
         response.append(protocolJson).append("\n");
         
         // Metadata line - SIMPLE format for /metadata endpoint (Databricks compatible)
-        // Generate dynamic schema based on table name and format
-        String schemaString = FakeFileStorageService.generateFakeSchema(table.getName(), table.getFormat());
+        // Generate dynamic schema based on table name and format (delegated to storage service)
+        String schemaString = fileStorageService.getTableSchema(table.getName(), table.getFormat());
         
-        // Get partition columns if using fake storage
-        List<String> partitionColumns = new ArrayList<>();
-        if (fileStorageService instanceof FakeFileStorageService) {
-            String[] partCols = ((FakeFileStorageService) fileStorageService).getPartitionColumns(table.getName());
-            partitionColumns = Arrays.asList(partCols);
-        }
+        // Get partition columns (delegated to storage service)
+        String[] partCols = fileStorageService.getPartitionColumns(table.getName());
+        List<String> partitionColumns = Arrays.asList(partCols);
         
         MetadataResponse metadata = MetadataResponse.builder()
                 .id(table.getId().toString())
@@ -233,15 +229,12 @@ public class DeltaSharingService {
         // Metadata line
         // Format for responseformat=parquet: {"metaData": {...}}
         // Format for responseformat=delta: {"metaData": {"deltaMetadata": {...}}}
-        // Generate dynamic schema based on table name and format
-        String schemaString = FakeFileStorageService.generateFakeSchema(table.getName(), table.getFormat());
+        // Generate dynamic schema based on table name and format (delegated to storage service)
+        String schemaString = fileStorageService.getTableSchema(table.getName(), table.getFormat());
         
-        // Get partition columns if using fake storage
-        List<String> partitionColumns = new ArrayList<>();
-        if (fileStorageService instanceof FakeFileStorageService) {
-            String[] partCols = ((FakeFileStorageService) fileStorageService).getPartitionColumns(table.getName());
-            partitionColumns = Arrays.asList(partCols);
-        }
+        // Get partition columns (delegated to storage service)
+        String[] partCols = fileStorageService.getPartitionColumns(table.getName());
+        List<String> partitionColumns = Arrays.asList(partCols);
         
         MetadataResponse metadata = MetadataResponse.builder()
                 .id(table.getId().toString())

@@ -19,7 +19,6 @@ import org.springframework.stereotype.Service;
 
 import jakarta.annotation.PostConstruct;
 import java.io.InputStream;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -28,8 +27,19 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
- * MinIO-based file storage service implementation.
- * Provides access to Delta table files stored in MinIO with pre-signed URLs.
+ * MinIO-based file storage service implementation for Delta Lake tables in S3-compatible storage.
+ * 
+ * This service:
+ * - Reads Delta Lake tables from MinIO/S3 object storage
+ * - Reads schemas and partition columns from Delta transaction log (_delta_log/*.json) stored in MinIO
+ * - Generates pre-signed URLs with configurable expiration for secure file access
+ * - Supports Delta Lake transaction log reading and data skipping
+ * 
+ * Configuration:
+ * - endpoint: MinIO/S3 endpoint URL
+ * - bucket: S3 bucket name where Delta tables are stored
+ * - accessKey/secretKey: S3 credentials
+ * - urlExpirationMinutes: Duration for pre-signed URL validity
  */
 @Service
 @Slf4j
@@ -318,5 +328,134 @@ public class MinIOFileStorageService implements FileStorageService {
         }
         
         return true;
+    }
+    
+    /**
+     * Get table schema from Delta log metadata
+     * For MinIO, we read the schema from the Delta transaction log stored in MinIO
+     */
+    @Override
+    public String getTableSchema(String tableName, String format) {
+        log.debug("Getting schema for table: {} (format: {}) from Delta log in MinIO", tableName, format);
+        
+        if (deltaLogReader == null) {
+            log.warn("DeltaLogReader not available, cannot read schema");
+            throw new IllegalStateException("DeltaLogReader is required for MinIO storage");
+        }
+        
+        if (!isAvailable()) {
+            log.warn("MinIO storage service is not available");
+            throw new IllegalStateException("MinIO storage service is not available");
+        }
+        
+        try {
+            // Construct table prefix and Delta log path in MinIO
+            String tablePrefix = resolveTablePrefixByName(tableName);
+            String deltaLogPath = tablePrefix + "_delta_log/";
+            
+            // Read the latest version (or version 0 as default)
+            Long targetVersion = 0L; // TODO: find latest version from _last_checkpoint or listing
+            String logFileName = String.format("%020d.json", targetVersion);
+            String logObjectName = deltaLogPath + logFileName;
+            
+            log.debug("Reading Delta log schema from MinIO: {}/{}", bucket, logObjectName);
+            
+            // Read Delta log from MinIO
+            DeltaSnapshot snapshot;
+            try (InputStream logStream = minioClient.getObject(
+                    GetObjectArgs.builder()
+                            .bucket(bucket)
+                            .object(logObjectName)
+                            .build())) {
+                
+                snapshot = deltaLogReader.readDeltaLog(logStream, targetVersion);
+            }
+            
+            if (snapshot.getMetadata() != null && snapshot.getMetadata().getSchemaString() != null) {
+                log.debug("Schema read from Delta log in MinIO for table: {}", tableName);
+                return snapshot.getMetadata().getSchemaString();
+            } else {
+                log.warn("No schema found in Delta log for table: {}", tableName);
+                throw new IllegalStateException("Schema not found in Delta log for table: " + tableName);
+            }
+            
+        } catch (Exception e) {
+            log.error("Failed to read schema from Delta log in MinIO for table: {}", tableName, e);
+            throw new RuntimeException("Failed to read schema from Delta log: " + e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * Get partition columns from Delta log metadata
+     * For MinIO, we read partition info from the Delta transaction log stored in MinIO
+     */
+    @Override
+    public String[] getPartitionColumns(String tableName) {
+        log.debug("Getting partition columns for table: {} from Delta log in MinIO", tableName);
+        
+        if (deltaLogReader == null) {
+            log.warn("DeltaLogReader not available, cannot read partition columns");
+            return new String[0];
+        }
+        
+        if (!isAvailable()) {
+            log.warn("MinIO storage service is not available");
+            return new String[0];
+        }
+        
+        try {
+            // Construct table prefix and Delta log path in MinIO
+            String tablePrefix = resolveTablePrefixByName(tableName);
+            String deltaLogPath = tablePrefix + "_delta_log/";
+            
+            // Read the latest version (or version 0 as default)
+            Long targetVersion = 0L;
+            String logFileName = String.format("%020d.json", targetVersion);
+            String logObjectName = deltaLogPath + logFileName;
+            
+            log.debug("Reading Delta log partition columns from MinIO: {}/{}", bucket, logObjectName);
+            
+            // Read Delta log from MinIO
+            DeltaSnapshot snapshot;
+            try (InputStream logStream = minioClient.getObject(
+                    GetObjectArgs.builder()
+                            .bucket(bucket)
+                            .object(logObjectName)
+                            .build())) {
+                
+                snapshot = deltaLogReader.readDeltaLog(logStream, targetVersion);
+            }
+            
+            if (snapshot.getMetadata() != null && snapshot.getMetadata().getPartitionColumns() != null) {
+                List<String> partitionColumns = snapshot.getMetadata().getPartitionColumns();
+                log.debug("Partition columns read from Delta log in MinIO for table {}: {}", 
+                         tableName, partitionColumns);
+                return partitionColumns.toArray(new String[0]);
+            } else {
+                log.debug("No partition columns found in Delta log for table: {}", tableName);
+                return new String[0];
+            }
+            
+        } catch (Exception e) {
+            log.warn("Failed to read partition columns from Delta log in MinIO for table: {}", tableName, e);
+            return new String[0];
+        }
+    }
+    
+    /**
+     * Resolve table prefix by name (for schema and partition column lookup)
+     * Helper method that works similarly to resolveTablePrefix but only with table name
+     */
+    private String resolveTablePrefixByName(String tableName) {
+        // For MinIO, we assume tables are stored directly in the bucket root
+        // or follow a simple naming convention
+        String prefix = tableName;
+        
+        // Ensure trailing slash
+        if (!prefix.endsWith("/")) {
+            prefix = prefix + "/";
+        }
+        
+        return prefix;
     }
 }

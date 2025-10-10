@@ -166,8 +166,11 @@ delta:
       bearer-token: ${DELTA_SHARING_ADMIN_TOKEN:}
     
     storage:
-      # Use MinIO storage in production
+      # Use MinIO storage in production (recommended for S3-compatible object storage)
       type: minio
+      
+      # Alternative: Use HTTP storage for local filesystem Delta tables
+      # type: http
       
       minio:
         enabled: true
@@ -178,6 +181,16 @@ delta:
         url-expiration-minutes: ${MINIO_URL_EXPIRATION:60}
         # Use HTTPS for MinIO in production
         use-ssl: true
+      
+      # HTTP Storage Configuration (for local filesystem Delta tables)
+      http:
+        enabled: true
+        # Base URL for serving Parquet files via HTTP
+        base-url: ${HTTP_BASE_URL:https://data.your-domain.com}
+        # Local filesystem path where Delta tables are stored
+        base-path: ${HTTP_BASE_PATH:/data/delta-tables}
+        # Enable Delta transaction log reading
+        use-delta-log: true
 
 # Logging - Production
 logging:
