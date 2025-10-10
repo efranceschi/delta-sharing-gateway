@@ -181,11 +181,15 @@
                                     <div class="db-form-group">
                                         <label class="db-form-label">Token Status</label>
                                         <div>
-                                            <span th:if="${user.apiToken != null and user.tokenExpiresAt != null}" 
-                                                  class="db-badge-status"
-                                                  th:classappend="${#temporals.isAfter(user.tokenExpiresAt, #temporals.createNow()) ? 'db-badge-success' : 'db-badge-error'}">
-                                                <i th:class="${#temporals.isAfter(user.tokenExpiresAt, #temporals.createNow()) ? 'fas fa-check-circle' : 'fas fa-times-circle'}"></i>
-                                                <span th:text="${#temporals.isAfter(user.tokenExpiresAt, #temporals.createNow()) ? 'Active' : 'Expired'}">Status</span>
+                                            <span th:if="${user.apiToken != null and user.tokenExpiresAt != null and user.tokenExpiresAt.isAfter(T(java.time.LocalDateTime).now())}" 
+                                                  class="db-badge-status db-badge-success">
+                                                <i class="fas fa-check-circle"></i>
+                                                <span>Active</span>
+                                            </span>
+                                            <span th:if="${user.apiToken != null and user.tokenExpiresAt != null and !user.tokenExpiresAt.isAfter(T(java.time.LocalDateTime).now())}" 
+                                                  class="db-badge-status db-badge-error">
+                                                <i class="fas fa-times-circle"></i>
+                                                <span>Expired</span>
                                             </span>
                                             <span th:if="${user.apiToken == null}" class="db-badge-status db-badge-warning">
                                                 <i class="fas fa-exclamation-circle"></i>
