@@ -42,6 +42,15 @@ delta:
     token:
       # Token expiration in days
       expiration-days: ${TOKEN_EXPIRATION_DAYS:365}
+    
+    # Cache Configuration for Schema and Metadata
+    cache:
+      schema:
+        # Time-to-live for cached table schemas (in minutes)
+        # Schemas are cached to avoid repeated Delta Log reads
+        ttl-minutes: ${SCHEMA_CACHE_TTL_MINUTES:60}
+        # Maximum number of schemas to cache
+        max-size: ${SCHEMA_CACHE_MAX_SIZE:1000}
 
 ---
 # =============================================================================
@@ -67,10 +76,10 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update
-    show-sql: true
+    show-sql: false
     properties:
       hibernate:
-        format_sql: true
+        format_sql: false
         dialect: org.hibernate.dialect.H2Dialect
   
   # DevTools (only in dev)

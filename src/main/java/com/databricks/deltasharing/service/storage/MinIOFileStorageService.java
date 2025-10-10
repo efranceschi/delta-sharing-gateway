@@ -15,6 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import jakarta.annotation.PostConstruct;
@@ -333,10 +334,12 @@ public class MinIOFileStorageService implements FileStorageService {
     /**
      * Get table schema from Delta log metadata
      * For MinIO, we read the schema from the Delta transaction log stored in MinIO
+     * Cached to avoid repeated MinIO reads and Delta log parsing
      */
     @Override
+    @Cacheable(value = "tableSchemas", key = "#tableName + '_' + #format")
     public String getTableSchema(String tableName, String format) {
-        log.debug("Getting schema for table: {} (format: {}) from Delta log in MinIO", tableName, format);
+        log.debug("Reading (uncached) schema for table: {} (format: {}) from Delta log in MinIO", tableName, format);
         
         if (deltaLogReader == null) {
             log.warn("DeltaLogReader not available, cannot read schema");
@@ -388,10 +391,12 @@ public class MinIOFileStorageService implements FileStorageService {
     /**
      * Get partition columns from Delta log metadata
      * For MinIO, we read partition info from the Delta transaction log stored in MinIO
+     * Cached to avoid repeated MinIO reads and Delta log parsing
      */
     @Override
+    @Cacheable(value = "partitionColumns", key = "#tableName")
     public String[] getPartitionColumns(String tableName) {
-        log.debug("Getting partition columns for table: {} from Delta log in MinIO", tableName);
+        log.debug("Reading (uncached) partition columns for table: {} from Delta log in MinIO", tableName);
         
         if (deltaLogReader == null) {
             log.warn("DeltaLogReader not available, cannot read partition columns");
