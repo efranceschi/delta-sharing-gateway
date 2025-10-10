@@ -49,7 +49,7 @@
             <!-- Top Bar -->
             <header class="db-topbar">
                 <div class="db-topbar-left">
-                    <h1 style="font-size: 24px; font-weight: 600; margin: 0;" th:text="${isEdit ? 'Edit Table' : 'Create Table'}">Table Form</h1>
+                    <h1 class="db-topbar-title" th:text="${isEdit ? 'Edit Table' : 'Create Table'}">Table Form</h1>
                 </div>
                 <div class="db-topbar-actions">
                     <button class="db-btn db-btn-secondary" onclick="history.back()">

@@ -8,14 +8,25 @@
         <title th:text="${isEdit ? 'Edit Share' : 'New Share'}">Share Form</title>
         
         <th:block th:fragment="content">
+            <!-- Breadcrumb -->
+            <nav class="db-breadcrumb">
+                <div class="db-breadcrumb-item">
+                    <a href="/"><i class="fas fa-home"></i> Home</a>
+                </div>
+                <span class="db-breadcrumb-separator">›</span>
+                <div class="db-breadcrumb-item">
+                    <a href="/admin/shares">Shares</a>
+                </div>
+                <span class="db-breadcrumb-separator">›</span>
+                <div class="db-breadcrumb-item">
+                    <span class="db-breadcrumb-current" th:text="${isEdit ? share.name : 'New'}">Form</span>
+                </div>
+            </nav>
+            
             <!-- Top Bar -->
             <header class="db-topbar">
                 <div class="db-topbar-left">
-                    <div class="db-breadcrumb">
-                        <a href="/admin/shares">Shares</a>
-                        <span class="db-breadcrumb-separator">/</span>
-                        <span th:text="${isEdit ? 'Edit' : 'New'}">New</span>
-                    </div>
+                    <h1 class="db-topbar-title" th:text="${isEdit ? 'Edit Share' : 'Create Share'}">Share Form</h1>
                 </div>
                 <div class="db-topbar-actions">
                     <button class="db-btn db-btn-secondary" onclick="window.location.href='/admin/shares'">

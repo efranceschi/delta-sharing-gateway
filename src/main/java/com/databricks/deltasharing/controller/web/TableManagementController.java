@@ -21,12 +21,6 @@ public class TableManagementController {
     private final DeltaTableManagementService tableService;
     private final DeltaSchemaManagementService schemaService;
     
-    @GetMapping
-    public String listTables(Model model) {
-        model.addAttribute("tables", tableService.getAllTables());
-        return "admin/tables/list";
-    }
-    
     @GetMapping("/new")
     public String showCreateForm(Model model) {
         model.addAttribute("table", new DeltaTableDTO());
@@ -47,9 +41,9 @@ public class TableManagementController {
         }
         
         try {
-            tableService.createTable(dto);
+            DeltaTableDTO createdTable = tableService.createTable(dto);
             redirectAttributes.addFlashAttribute("successMessage", "Table created successfully!");
-            return "redirect:/admin/tables";
+            return "redirect:/admin/schemas/" + createdTable.getSchemaId() + "/tables";
         } catch (Exception e) {
             model.addAttribute("errorMessage", e.getMessage());
             model.addAttribute("schemas", schemaService.getAllSchemas());
@@ -64,14 +58,16 @@ public class TableManagementController {
     }
     
     @GetMapping("/{id}/edit")
-    public String showEditForm(@PathVariable Long id, Model model) {
+    public String showEditForm(@PathVariable Long id, Model model, RedirectAttributes redirectAttributes) {
         try {
-            model.addAttribute("table", tableService.getTableById(id));
+            DeltaTableDTO table = tableService.getTableById(id);
+            model.addAttribute("table", table);
             model.addAttribute("schemas", schemaService.getAllSchemas());
             model.addAttribute("isEdit", true);
             return "admin/tables/form";
         } catch (Exception e) {
-            return "redirect:/admin/tables";
+            redirectAttributes.addFlashAttribute("errorMessage", "Table not found");
+            return "redirect:/";
         }
     }
     
@@ -88,9 +84,9 @@ public class TableManagementController {
         }
         
         try {
-            tableService.updateTable(id, dto);
+            DeltaTableDTO updatedTable = tableService.updateTable(id, dto);
             redirectAttributes.addFlashAttribute("successMessage", "Table updated successfully!");
-            return "redirect:/admin/tables";
+            return "redirect:/admin/schemas/" + updatedTable.getSchemaId() + "/tables";
         } catch (Exception e) {
             model.addAttribute("errorMessage", e.getMessage());
             model.addAttribute("schemas", schemaService.getAllSchemas());
@@ -102,11 +98,16 @@ public class TableManagementController {
     @GetMapping("/{id}/delete")
     public String deleteTable(@PathVariable Long id, RedirectAttributes redirectAttributes) {
         try {
+            // Get the table first to know which schema to redirect to
+            DeltaTableDTO table = tableService.getTableById(id);
+            Long schemaId = table.getSchemaId();
+            
             tableService.deleteTable(id);
             redirectAttributes.addFlashAttribute("successMessage", "Table deleted successfully!");
+            return "redirect:/admin/schemas/" + schemaId + "/tables";
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+            return "redirect:/";
         }
-        return "redirect:/admin/tables";
     }
 }
