@@ -60,6 +60,13 @@
             font-size: 18px;
             font-weight: 600;
             color: rgba(255, 255, 255, 0.95);
+            text-decoration: none;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        
+        .db-topnav-title:hover {
+            opacity: 0.8;
         }
         
         .db-topnav-separator {
@@ -632,7 +639,7 @@
                 <button class="db-hamburger" id="sidebarToggle" title="Toggle sidebar">
                     <i class="fas fa-bars"></i>
                 </button>
-                <div class="db-topnav-title">Delta Sharing Gateway</div>
+                <a th:href="@{/}" class="db-topnav-title">Delta Sharing Gateway</a>
                 <div class="db-topnav-separator"></div>
                 <div class="db-topnav-logo">
                     <svg aria-hidden="true" width="22" viewBox="0 0 24 26" fill="none" xmlns="http://www.w3.org/2000/svg">
