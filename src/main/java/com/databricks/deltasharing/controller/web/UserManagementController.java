@@ -16,6 +16,9 @@ import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+
 @Controller
 @RequestMapping("/system/users")
 @RequiredArgsConstructor
@@ -157,16 +160,31 @@ public class UserManagementController {
                         .body("API access is disabled for this user. Please enable 'Enable API' first.");
             }
             
-            // Generate credential file in config.share format
-            String credentialFile = String.format(
-                "{\n" +
-                "  \"shareCredentialsVersion\": 1,\n" +
-                "  \"endpoint\": \"%s\",\n" +
-                "  \"bearerToken\": \"%s\"\n" +
-                "}\n",
-                deltaSharingEndpoint,
-                user.getApiToken()
-            );
+            // Generate credential file in official Delta Sharing format (Databricks compatible)
+            // Format: https://github.com/delta-io/delta-sharing/blob/main/PROTOCOL.md#profile-file-format
+            
+            // Calculate expiration time in ISO 8601 format (UTC)
+            String expirationTime = null;
+            if (user.getTokenExpiresAt() != null) {
+                expirationTime = user.getTokenExpiresAt()
+                        .atZone(ZoneOffset.UTC)
+                        .format(DateTimeFormatter.ISO_INSTANT);
+            }
+            
+            // Build credential file with fields in official order
+            StringBuilder credentialFile = new StringBuilder();
+            credentialFile.append("{\n");
+            credentialFile.append("  \"shareCredentialsVersion\": 1,\n");
+            credentialFile.append(String.format("  \"bearerToken\": \"%s\",\n", user.getApiToken()));
+            credentialFile.append(String.format("  \"endpoint\": \"%s\"", deltaSharingEndpoint));
+            
+            // Add expiration time if available (optional field)
+            if (expirationTime != null) {
+                credentialFile.append(",\n");
+                credentialFile.append(String.format("  \"expirationTime\": \"%s\"", expirationTime));
+            }
+            
+            credentialFile.append("\n}\n");
             
             // Generate filename with username
             String filename = String.format("%s-credentials.share", user.getUsername());
@@ -176,7 +194,7 @@ public class UserManagementController {
             return ResponseEntity.ok()
                     .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
                     .contentType(MediaType.APPLICATION_JSON)
-                    .body(credentialFile);
+                    .body(credentialFile.toString());
             
         } catch (Exception e) {
             log.error("Error generating credential file for user {}", id, e);
