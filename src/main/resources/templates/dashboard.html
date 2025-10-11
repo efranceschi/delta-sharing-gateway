@@ -314,32 +314,65 @@
                                     }
                                 }
                                 
-                                // Show admin status
+                                // Show admin status with appropriate styling
                                 const adminStatusDiv = document.getElementById('minio-admin-status');
-                                if (adminStatusDiv) {
-                                    if (data.info.adminEnabled) {
-                                        adminStatusDiv.innerHTML = '<i class="fas fa-check-circle" style="color: #10B981;"></i> Admin Enabled';
-                                    } else {
-                                        adminStatusDiv.innerHTML = '<i class="fas fa-times-circle" style="color: #9CA3AF;"></i> Admin Disabled';
-                                    }
-                                }
-                                
-                                // Show admin info if available
-                                if (data.info.adminInfo) {
-                                    const adminInfoDiv = document.getElementById('minio-admin-info');
-                                    if (adminInfoDiv && data.info.adminInfo.available) {
-                                        adminInfoDiv.style.display = 'block';
-                                        adminInfoDiv.innerHTML = '<i class="fas fa-shield-alt" style="color: #10B981; margin-right: 4px;"></i> Admin credentials validated successfully';
-                                    }
-                                }
-                            }
-                            
-                            // Show note if available
-                            if (data.note || (data.info && data.info.note)) {
+                                const adminInfoDiv = document.getElementById('minio-admin-info');
                                 const noteDiv = document.getElementById('minio-cluster-note');
-                                noteDiv.style.display = 'block';
-                                const noteText = data.note || data.info.note;
-                                noteDiv.querySelector('span').textContent = noteText;
+                                
+                                if (adminStatusDiv) {
+                                    const adminStatus = data.info.adminStatus || 'not_configured';
+                                    
+                                    if (adminStatus === 'operational') {
+                                        // Admin is configured and working
+                                        adminStatusDiv.innerHTML = '<i class="fas fa-check-circle" style="color: #10B981;"></i> Operational';
+                                        
+                                        if (adminInfoDiv && data.info.adminInfo && data.info.adminInfo.credentialsValidated) {
+                                            adminInfoDiv.style.display = 'block';
+                                            adminInfoDiv.innerHTML = '<i class="fas fa-shield-alt" style="color: #10B981; margin-right: 4px;"></i> ' +
+                                                'Admin credentials validated - ' + data.info.adminInfo.bucketsAccessible + ' bucket(s) accessible';
+                                        }
+                                        
+                                        // Hide warning note
+                                        noteDiv.style.display = 'none';
+                                        
+                                    } else if (adminStatus === 'error') {
+                                        // Admin is configured but not working
+                                        adminStatusDiv.innerHTML = '<i class="fas fa-exclamation-triangle" style="color: #F59E0B;"></i> Error';
+                                        
+                                        if (adminInfoDiv) {
+                                            adminInfoDiv.style.display = 'block';
+                                            adminInfoDiv.style.background = '#FEF2F2';
+                                            adminInfoDiv.style.borderLeftColor = '#EF4444';
+                                            adminInfoDiv.style.color = '#991B1B';
+                                            adminInfoDiv.innerHTML = '<i class="fas fa-times-circle" style="color: #EF4444; margin-right: 4px;"></i> ' +
+                                                'Admin connection failed - check credentials';
+                                        }
+                                        
+                                        if (data.info.note) {
+                                            noteDiv.style.display = 'block';
+                                            noteDiv.querySelector('span').textContent = data.info.note;
+                                        }
+                                        
+                                    } else {
+                                        // Admin not configured
+                                        adminStatusDiv.innerHTML = '<i class="fas fa-times-circle" style="color: #9CA3AF;"></i> Not Configured';
+                                        
+                                        // Hide admin info
+                                        if (adminInfoDiv) {
+                                            adminInfoDiv.style.display = 'none';
+                                        }
+                                        
+                                        // Show configuration hint
+                                        if (data.info.note) {
+                                            noteDiv.style.display = 'block';
+                                            noteDiv.style.background = '#EFF6FF';
+                                            noteDiv.style.borderLeftColor = '#3B82F6';
+                                            noteDiv.style.color = '#1E40AF';
+                                            noteDiv.innerHTML = '<i class="fas fa-info-circle" style="margin-right: 4px;"></i> ' +
+                                                '<span>' + data.info.note + '</span>';
+                                        }
+                                    }
+                                }
                             }
                         })
                         .catch(error => {

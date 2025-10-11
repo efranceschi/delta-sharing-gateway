@@ -385,6 +385,7 @@ public class MinIOFileStorageService implements FileStorageService {
         if (!isAvailable()) {
             info.put("available", false);
             info.put("adminEnabled", false);
+            info.put("adminConfigured", false);
             return info;
         }
         
@@ -395,18 +396,33 @@ public class MinIOFileStorageService implements FileStorageService {
             info.put("bucketCount", buckets.size());
             info.put("endpoint", endpoint);
             info.put("adminEnabled", isAdminAvailable());
+            info.put("adminConfigured", admin.isConfigured());
             
             // If admin client is available, try to get detailed metrics
             if (isAdminAvailable()) {
                 try {
                     Map<String, Object> adminInfo = getAdminClusterInfo();
                     info.put("adminInfo", adminInfo);
+                    
+                    // Only show the library note if admin is working
+                    if (adminInfo.get("available") == Boolean.TRUE) {
+                        info.put("adminStatus", "operational");
+                        // Don't show note here - admin is working fine
+                    } else {
+                        info.put("adminStatus", "error");
+                        if (adminInfo.containsKey("error")) {
+                            info.put("note", "Admin connection error: " + adminInfo.get("error"));
+                        }
+                    }
                 } catch (Exception e) {
                     log.warn("Failed to get admin cluster info: {}", e.getMessage());
+                    info.put("adminStatus", "error");
                     info.put("adminError", "Failed to retrieve admin metrics: " + e.getMessage());
+                    info.put("note", "Admin credentials configured but connection failed");
                 }
             } else {
-                info.put("note", "Admin credentials not configured - detailed metrics unavailable");
+                info.put("adminStatus", "not_configured");
+                info.put("note", "Configure admin credentials in application.yml to enable cluster monitoring");
             }
             
         } catch (Exception e) {
@@ -420,7 +436,7 @@ public class MinIOFileStorageService implements FileStorageService {
     
     /**
      * Get detailed cluster information using admin credentials
-     * Note: This requires MinIO Admin API which needs additional setup
+     * Validates admin credentials by attempting to list buckets
      * 
      * @return Map with detailed admin cluster information
      */
@@ -438,25 +454,19 @@ public class MinIOFileStorageService implements FileStorageService {
             var buckets = adminClient.listBuckets();
             adminInfo.put("available", true);
             adminInfo.put("bucketsAccessible", buckets.size());
+            adminInfo.put("credentialsValidated", true);
             
-            // For detailed cluster metrics (storage, memory, nodes, etc.),
+            log.info("MinIO admin credentials validated successfully. {} bucket(s) accessible.", buckets.size());
+            
+            // Note: For even more detailed cluster metrics (storage, memory, nodes, etc.),
             // we would need to use MinioAdminClient from io.minio:minio-admin
-            // which requires additional dependencies:
-            // <dependency>
-            //     <groupId>io.minio</groupId>
-            //     <artifactId>minio-admin</artifactId>
-            // </dependency>
-            //
-            // Example usage with MinioAdminClient:
-            // - ServerInfo info = adminClient.serverInfo()
-            // - StorageInfo storage = adminClient.storageInfo()
-            // - etc.
-            
-            adminInfo.put("note", "Full admin metrics require MinIO Admin API library (io.minio:minio-admin)");
+            // which requires additional dependencies. Current implementation validates
+            // admin credentials are working correctly.
             
         } catch (Exception e) {
-            log.warn("Failed to get admin cluster info: {}", e.getMessage());
+            log.warn("Failed to validate admin credentials: {}", e.getMessage());
             adminInfo.put("available", false);
+            adminInfo.put("credentialsValidated", false);
             adminInfo.put("error", e.getMessage());
         }
         
