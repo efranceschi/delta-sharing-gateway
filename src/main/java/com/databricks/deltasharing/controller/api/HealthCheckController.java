@@ -1,7 +1,6 @@
 package com.databricks.deltasharing.controller.api;
 
 import com.databricks.deltasharing.service.storage.MinIOFileStorageService;
-import io.minio.MinioClient;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.Cacheable;
@@ -60,42 +59,26 @@ public class HealthCheckController {
             return ResponseEntity.ok(response);
         }
         
-        // Try to perform a simple operation to check connectivity
+        // Test MinIO connection
         try {
-            // Access the MinIO client via reflection (since it's private)
-            java.lang.reflect.Field minioClientField = minioService.getClass().getDeclaredField("minioClient");
-            minioClientField.setAccessible(true);
-            MinioClient minioClient = (MinioClient) minioClientField.get(minioService);
+            boolean isHealthy = minioService.testConnection();
             
-            if (minioClient == null) {
-                response.put("status", "error");
-                response.put("message", "MinIO client is not initialized");
-                return ResponseEntity.ok(response);
+            if (isHealthy) {
+                log.debug("MinIO health check: OK");
+                response.put("status", "healthy");
+                response.put("message", "MinIO service is operational");
+            } else {
+                log.warn("MinIO health check failed");
+                response.put("status", "unhealthy");
+                response.put("message", "MinIO service is not responding");
             }
             
-            // Try to list buckets as a health check
-            // This will fail if MinIO is not reachable
-            minioClient.listBuckets();
-            
-            log.debug("MinIO health check: OK");
-            response.put("status", "healthy");
-            response.put("message", "MinIO service is operational");
             return ResponseEntity.ok(response);
             
-        } catch (NoSuchFieldException e) {
-            log.error("Failed to access MinIO client via reflection", e);
-            response.put("status", "error");
-            response.put("message", "Internal error accessing MinIO client");
-            return ResponseEntity.ok(response);
-        } catch (IllegalAccessException e) {
-            log.error("Failed to access MinIO client field", e);
-            response.put("status", "error");
-            response.put("message", "Internal error accessing MinIO client");
-            return ResponseEntity.ok(response);
         } catch (Exception e) {
             log.warn("MinIO health check failed: {}", e.getMessage());
             response.put("status", "unhealthy");
-            response.put("message", "MinIO service is not responding: " + e.getMessage());
+            response.put("message", "MinIO service error: " + e.getMessage());
             return ResponseEntity.ok(response);
         }
     }
@@ -203,44 +186,26 @@ public class HealthCheckController {
         }
         
         try {
-            // Access MinIO client via reflection
-            java.lang.reflect.Field minioClientField = minioService.getClass().getDeclaredField("minioClient");
-            minioClientField.setAccessible(true);
-            MinioClient minioClient = (MinioClient) minioClientField.get(minioService);
+            // Get cluster information from MinIO service
+            Map<String, Object> clusterInfo = minioService.getClusterInfo();
             
-            if (minioClient == null) {
-                response.put("status", "error");
-                response.put("message", "MinIO client is not initialized");
-                return ResponseEntity.ok(response);
-            }
-            
-            // Get server info using admin API
-            try {
-                // List buckets to test connectivity
-                var buckets = minioClient.listBuckets();
-                
-                Map<String, Object> info = new HashMap<>();
-                info.put("bucketCount", buckets.size());
-                
-                // Note: For detailed cluster metrics (disk usage, memory, nodes, quorum),
-                // we would need MinIO Admin API which requires admin credentials.
-                // For now, we'll provide basic connectivity info.
-                
+            if (clusterInfo.containsKey("available") && !(Boolean) clusterInfo.get("available")) {
+                response.put("status", "unhealthy");
+                response.put("message", "MinIO cluster is not available");
+                if (clusterInfo.containsKey("error")) {
+                    response.put("error", clusterInfo.get("error"));
+                }
+            } else {
                 response.put("status", "healthy");
                 response.put("message", "MinIO cluster is operational");
-                response.put("info", info);
+                response.put("info", clusterInfo);
                 response.put("note", "Detailed cluster metrics require MinIO Admin API credentials");
-                
-            } catch (Exception e) {
-                log.warn("Failed to get MinIO cluster info: {}", e.getMessage());
-                response.put("status", "unhealthy");
-                response.put("message", "Cannot retrieve cluster information: " + e.getMessage());
             }
             
             return ResponseEntity.ok(response);
             
         } catch (Exception e) {
-            log.error("Error accessing MinIO client: {}", e.getMessage());
+            log.error("Error getting MinIO cluster info: {}", e.getMessage());
             response.put("status", "error");
             response.put("message", "Internal error: " + e.getMessage());
             return ResponseEntity.ok(response);

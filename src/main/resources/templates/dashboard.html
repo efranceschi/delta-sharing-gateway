@@ -68,15 +68,46 @@
                             System Status
                         </h3>
                         
-                        <!-- Services Grid -->
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px;">
+                        <!-- Services Grid - 3 Columns Layout -->
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;">
                             
-                            <!-- Database Status -->
+                            <!-- 1. JVM Memory -->
+                            <div style="padding: 16px; background: #F9FAFB; border-radius: 6px; border-left: 4px solid #8B5CF6;">
+                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                                    <div>
+                                        <div style="font-weight: 600; color: #1F2937; font-size: 14px;">
+                                            <i class="fas fa-memory" style="margin-right: 8px; color: #8B5CF6;"></i>
+                                            JVM Memory
+                                        </div>
+                                        <div id="jvm-memory-text" style="font-size: 12px; color: #6B7280; margin-top: 4px;">Loading...</div>
+                                    </div>
+                                    <div id="jvm-status-badge" style="padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; background: #F3F4F6; color: #6B7280;">
+                                        <i class="fas fa-spinner fa-spin"></i>
+                                    </div>
+                                </div>
+                                
+                                <!-- Memory Progress Bar -->
+                                <div style="margin-top: 8px;">
+                                    <div style="display: flex; justify-content: space-between; font-size: 11px; color: #6B7280; margin-bottom: 4px;">
+                                        <span id="jvm-used">0 MB</span>
+                                        <span id="jvm-max">0 MB</span>
+                                    </div>
+                                    <div style="width: 100%; height: 20px; background: #E5E7EB; border-radius: 10px; overflow: hidden; position: relative;">
+                                        <div id="jvm-memory-bar" style="height: 100%; background: linear-gradient(90deg, #10B981, #059669); border-radius: 10px; width: 0%; transition: width 0.5s ease, background 0.5s ease;"></div>
+                                        <div id="jvm-memory-percent" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 11px; font-weight: 600; color: #1F2937;">0%</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- 2. Database Status -->
                             <div id="database-status-container" class="status-item" style="padding: 12px 16px; background: #F9FAFB; border-radius: 6px; border-left: 4px solid #9CA3AF;">
                                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
                                     <div style="display: flex; align-items: center; gap: 12px;">
                                         <div id="database-status-icon" style="width: 12px; height: 12px; border-radius: 50%; background: #9CA3AF;"></div>
-                                        <div style="font-weight: 600; color: #1F2937; font-size: 14px;">Database</div>
+                                        <div style="font-weight: 600; color: #1F2937; font-size: 14px;">
+                                            <i class="fas fa-database" style="margin-right: 8px;"></i>
+                                            Database
+                                        </div>
                                     </div>
                                     <div id="database-status-badge" style="padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; background: #F3F4F6; color: #6B7280;">
                                         <i class="fas fa-spinner fa-spin"></i>
@@ -85,12 +116,33 @@
                                 <div id="database-status-text" style="font-size: 12px; color: #6B7280;">Checking...</div>
                             </div>
                             
-                            <!-- MinIO Storage Status -->
+                            <!-- 3. MinIO Cluster Information -->
+                            <div id="minio-cluster-container" style="padding: 16px; background: #F9FAFB; border-radius: 6px; border-left: 4px solid #3B82F6; display: none;">
+                                <div style="font-weight: 600; color: #1F2937; font-size: 14px; margin-bottom: 12px;">
+                                    <i class="fas fa-server" style="margin-right: 8px; color: #3B82F6;"></i>
+                                    MinIO Cluster
+                                </div>
+                                <div id="minio-cluster-info" style="font-size: 12px; color: #6B7280;">
+                                    <div style="margin-bottom: 8px;">
+                                        <div style="color: #9CA3AF; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Buckets</div>
+                                        <div id="minio-buckets" style="font-size: 16px; font-weight: 600; color: #1F2937; margin-top: 4px;">-</div>
+                                    </div>
+                                    <div id="minio-cluster-note" style="margin-top: 8px; padding: 6px 8px; background: #FEF3C7; border-left: 3px solid #F59E0B; border-radius: 4px; font-size: 10px; color: #92400E; display: none;">
+                                        <i class="fas fa-info-circle" style="margin-right: 4px;"></i>
+                                        <span></span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- 4. MinIO Storage Status -->
                             <div id="minio-status-container" class="status-item" style="padding: 12px 16px; background: #F9FAFB; border-radius: 6px; border-left: 4px solid #9CA3AF;">
                                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
                                     <div style="display: flex; align-items: center; gap: 12px;">
                                         <div id="minio-status-icon" style="width: 12px; height: 12px; border-radius: 50%; background: #9CA3AF;"></div>
-                                        <div style="font-weight: 600; color: #1F2937; font-size: 14px;">MinIO Storage</div>
+                                        <div style="font-weight: 600; color: #1F2937; font-size: 14px;">
+                                            <i class="fas fa-hdd" style="margin-right: 8px;"></i>
+                                            MinIO Storage
+                                        </div>
                                     </div>
                                     <div id="minio-status-badge" style="padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; background: #F3F4F6; color: #6B7280;">
                                         <i class="fas fa-spinner fa-spin"></i>
@@ -99,54 +151,6 @@
                                 <div id="minio-status-text" style="font-size: 12px; color: #6B7280;">Checking...</div>
                             </div>
                             
-                        </div>
-                        
-                        <!-- JVM Memory Gauge -->
-                        <div style="margin-top: 20px; padding: 16px; background: #F9FAFB; border-radius: 6px;">
-                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
-                                <div>
-                                    <div style="font-weight: 600; color: #1F2937; font-size: 14px;">
-                                        <i class="fas fa-memory" style="margin-right: 8px; color: #8B5CF6;"></i>
-                                        JVM Memory
-                                    </div>
-                                    <div id="jvm-memory-text" style="font-size: 12px; color: #6B7280; margin-top: 4px;">Loading...</div>
-                                </div>
-                                <div id="jvm-status-badge" style="padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; background: #F3F4F6; color: #6B7280;">
-                                    <i class="fas fa-spinner fa-spin"></i>
-                                </div>
-                            </div>
-                            
-                            <!-- Memory Progress Bar -->
-                            <div style="margin-top: 8px;">
-                                <div style="display: flex; justify-content: space-between; font-size: 11px; color: #6B7280; margin-bottom: 4px;">
-                                    <span id="jvm-used">0 MB</span>
-                                    <span id="jvm-max">0 MB</span>
-                                </div>
-                                <div style="width: 100%; height: 20px; background: #E5E7EB; border-radius: 10px; overflow: hidden; position: relative;">
-                                    <div id="jvm-memory-bar" style="height: 100%; background: linear-gradient(90deg, #10B981, #059669); border-radius: 10px; width: 0%; transition: width 0.5s ease, background 0.5s ease;"></div>
-                                    <div id="jvm-memory-percent" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 11px; font-weight: 600; color: #1F2937;">0%</div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- MinIO Cluster Info -->
-                        <div id="minio-cluster-container" style="margin-top: 20px; padding: 16px; background: #F9FAFB; border-radius: 6px; display: none;">
-                            <div style="font-weight: 600; color: #1F2937; font-size: 14px; margin-bottom: 12px;">
-                                <i class="fas fa-server" style="margin-right: 8px; color: #3B82F6;"></i>
-                                MinIO Cluster Information
-                            </div>
-                            <div id="minio-cluster-info" style="font-size: 12px; color: #6B7280;">
-                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
-                                    <div>
-                                        <div style="color: #9CA3AF; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Buckets</div>
-                                        <div id="minio-buckets" style="font-size: 16px; font-weight: 600; color: #1F2937; margin-top: 4px;">-</div>
-                                    </div>
-                                </div>
-                                <div id="minio-cluster-note" style="margin-top: 12px; padding: 8px; background: #FEF3C7; border-left: 3px solid #F59E0B; border-radius: 4px; font-size: 11px; color: #92400E; display: none;">
-                                    <i class="fas fa-info-circle" style="margin-right: 4px;"></i>
-                                    <span></span>
-                                </div>
-                            </div>
                         </div>
                         
                     </div>

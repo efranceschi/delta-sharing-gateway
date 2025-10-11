@@ -299,6 +299,60 @@ public class MinIOFileStorageService implements FileStorageService {
         return enabled && isConfigured() && minioClient != null;
     }
     
+    /**
+     * Test MinIO connection by listing buckets
+     * Used for health checks
+     * 
+     * @return true if connection is successful, false otherwise
+     */
+    public boolean testConnection() {
+        if (!isAvailable()) {
+            return false;
+        }
+        
+        try {
+            // Try to list buckets as a simple health check
+            minioClient.listBuckets();
+            return true;
+        } catch (Exception e) {
+            log.warn("MinIO connection test failed: {}", e.getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Get basic MinIO cluster information
+     * Used for health monitoring
+     * 
+     * @return Map with cluster information
+     */
+    public Map<String, Object> getClusterInfo() {
+        Map<String, Object> info = new HashMap<>();
+        
+        if (!isAvailable()) {
+            info.put("available", false);
+            return info;
+        }
+        
+        try {
+            // List buckets to get basic cluster info
+            var buckets = minioClient.listBuckets();
+            info.put("available", true);
+            info.put("bucketCount", buckets.size());
+            info.put("endpoint", endpoint);
+            
+            // Note: More detailed cluster metrics would require MinIO Admin API
+            // which needs additional dependencies and admin credentials
+            
+        } catch (Exception e) {
+            log.warn("Failed to get MinIO cluster info: {}", e.getMessage());
+            info.put("available", false);
+            info.put("error", e.getMessage());
+        }
+        
+        return info;
+    }
+    
     private boolean isConfigured() {
         if (endpoint == null || endpoint.isEmpty()) {
             log.debug("MinIO endpoint is not configured");
