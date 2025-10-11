@@ -7,6 +7,7 @@ import lombok.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Represents a Delta Share - a logical grouping of schemas
@@ -25,6 +26,9 @@ public class DeltaShare {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+    
+    @Column(nullable = false, unique = true, length = 36)
+    private String uuid;
     
     @NotBlank(message = "Share name is required")
     @Column(nullable = false, unique = true)
@@ -47,6 +51,9 @@ public class DeltaShare {
     
     @PrePersist
     protected void onCreate() {
+        if (uuid == null || uuid.isEmpty()) {
+            uuid = UUID.randomUUID().toString();
+        }
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
     }

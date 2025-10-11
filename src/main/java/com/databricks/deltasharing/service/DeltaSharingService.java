@@ -197,7 +197,7 @@ public class DeltaSharingService {
         List<String> partitionColumns = Arrays.asList(partCols);
         
         MetadataResponse metadata = MetadataResponse.builder()
-                .id(table.getId().toString())
+                .id(table.getUuid())
                 .format(FormatResponse.builder()
                         .provider(table.getFormat())
                         .build())
@@ -281,7 +281,7 @@ public class DeltaSharingService {
         List<String> partitionColumns = Arrays.asList(partCols);
         
         MetadataResponse metadata = MetadataResponse.builder()
-                .id(table.getId().toString())
+                .id(table.getUuid())
                 .name(table.getName())
                 .format(FormatResponse.builder()
                         .provider(table.getFormat())
@@ -363,7 +363,7 @@ public class DeltaSharingService {
         List<String> partitionColumns = Arrays.asList(partCols);
         
         MetadataResponse metadata = MetadataResponse.builder()
-                .id(table.getId().toString())
+                .id(table.getUuid())
                 .name(table.getName())
                 .format(FormatResponse.builder()
                         .provider(table.getFormat())
@@ -405,7 +405,7 @@ public class DeltaSharingService {
     private ShareResponse convertToShareResponse(DeltaShare share) {
         return ShareResponse.builder()
                 .name(share.getName())
-                .id(share.getId().toString())
+                .id(share.getUuid()) // Use UUID instead of numeric ID for Databricks compatibility
                 .build();
     }
     
@@ -417,12 +417,19 @@ public class DeltaSharingService {
     }
     
     private TableResponse convertToTableResponse(DeltaTable table, String schemaName, String shareName) {
+        // Get share UUID for Databricks compatibility
+        String shareUuid = null;
+        if (table.getSchema() != null && table.getSchema().getShare() != null) {
+            shareUuid = table.getSchema().getShare().getUuid();
+        }
+        
         return TableResponse.builder()
                 .name(table.getName())
                 .schema(schemaName)
                 .share(shareName)
                 .shareAsView(table.getShareAsView())
-                .id(table.getId().toString())
+                .id(table.getUuid()) // Use UUID instead of numeric ID for Databricks compatibility
+                .shareId(shareUuid) // Share UUID for Databricks compatibility
                 .build();
     }
     

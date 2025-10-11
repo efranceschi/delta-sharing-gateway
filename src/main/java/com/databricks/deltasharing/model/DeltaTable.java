@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 /**
  * Represents a Delta Table - a table within a schema that can be shared
@@ -25,6 +26,9 @@ public class DeltaTable {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+    
+    @Column(nullable = false, unique = true, length = 36)
+    private String uuid;
     
     @NotBlank(message = "Table name is required")
     @Column(nullable = false)
@@ -54,6 +58,9 @@ public class DeltaTable {
     
     @PrePersist
     protected void onCreate() {
+        if (uuid == null || uuid.isEmpty()) {
+            uuid = UUID.randomUUID().toString();
+        }
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
     }

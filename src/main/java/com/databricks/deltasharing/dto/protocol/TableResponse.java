@@ -1,6 +1,7 @@
 package com.databricks.deltasharing.dto.protocol;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -38,7 +39,13 @@ public class TableResponse {
     private Boolean shareAsView;
     
     /**
-     * Optional table ID
+     * Optional table ID (UUID)
      */
     private String id;
+    
+    /**
+     * Optional share ID (UUID) - Databricks compatibility
+     */
+    @JsonProperty("share_id")
+    private String shareId;
 }
