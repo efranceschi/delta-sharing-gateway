@@ -24,38 +24,105 @@
             
             <!-- Content -->
             <div class="db-content" style="background: #F9FAFB;">
-                <!-- Statistics Cards -->
-                <div style="padding: 24px; display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
+                <!-- Statistics Cards - 4 Columns with Smaller Height -->
+                <div style="padding: 24px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;">
                     <!-- Shares Card -->
-                    <div class="db-stat-card">
-                        <div class="db-stat-icon" style="background: rgba(59, 130, 246, 0.1); color: #3B82F6;">
+                    <div class="db-stat-card" style="padding: 12px 16px;">
+                        <div class="db-stat-icon" style="background: rgba(59, 130, 246, 0.1); color: #3B82F6; width: 36px; height: 36px; font-size: 16px;">
                             <i class="fas fa-folder"></i>
                         </div>
                         <div class="db-stat-content">
-                            <div class="db-stat-label">Shares</div>
-                            <div class="db-stat-value" th:text="${sharesCount ?: 0}">0</div>
+                            <div class="db-stat-label" style="font-size: 11px;">Shares</div>
+                            <div class="db-stat-value" style="font-size: 22px;" th:text="${sharesCount ?: 0}">0</div>
                         </div>
                     </div>
                     
                     <!-- Schemas Card -->
-                    <div class="db-stat-card">
-                        <div class="db-stat-icon" style="background: rgba(139, 92, 246, 0.1); color: #8B5CF6;">
+                    <div class="db-stat-card" style="padding: 12px 16px;">
+                        <div class="db-stat-icon" style="background: rgba(139, 92, 246, 0.1); color: #8B5CF6; width: 36px; height: 36px; font-size: 16px;">
                             <i class="fas fa-layer-group"></i>
                         </div>
                         <div class="db-stat-content">
-                            <div class="db-stat-label">Schemas</div>
-                            <div class="db-stat-value" th:text="${schemasCount ?: 0}">0</div>
+                            <div class="db-stat-label" style="font-size: 11px;">Schemas</div>
+                            <div class="db-stat-value" style="font-size: 22px;" th:text="${schemasCount ?: 0}">0</div>
                         </div>
                     </div>
                     
                     <!-- Tables Card -->
-                    <div class="db-stat-card">
-                        <div class="db-stat-icon" style="background: rgba(16, 185, 129, 0.1); color: #10B981;">
+                    <div class="db-stat-card" style="padding: 12px 16px;">
+                        <div class="db-stat-icon" style="background: rgba(16, 185, 129, 0.1); color: #10B981; width: 36px; height: 36px; font-size: 16px;">
                             <i class="fas fa-table"></i>
                         </div>
                         <div class="db-stat-content">
-                            <div class="db-stat-label">Tables</div>
-                            <div class="db-stat-value" th:text="${tablesCount ?: 0}">0</div>
+                            <div class="db-stat-label" style="font-size: 11px;">Tables</div>
+                            <div class="db-stat-value" style="font-size: 22px;" th:text="${tablesCount ?: 0}">0</div>
+                        </div>
+                    </div>
+                    
+                    <!-- MinIO Buckets Card -->
+                    <div class="db-stat-card" style="padding: 12px 16px;">
+                        <div class="db-stat-icon" style="background: rgba(244, 114, 182, 0.1); color: #F472B6; width: 36px; height: 36px; font-size: 16px;">
+                            <i class="fas fa-database"></i>
+                        </div>
+                        <div class="db-stat-content">
+                            <div class="db-stat-label" style="font-size: 11px;">MinIO Buckets</div>
+                            <div id="minio-buckets-stat" class="db-stat-value" style="font-size: 22px;">-</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- HTTP Metrics Timeline Chart (Full Width) -->
+                <div style="padding: 0 24px 24px 24px;">
+                    <div style="background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 20px;">
+                        <h3 style="margin: 0 0 16px 0; font-size: 18px; font-weight: 600; color: #1F2937;">
+                            <i class="fas fa-chart-line" style="margin-right: 8px; color: #3B82F6;"></i>
+                            HTTP Requests - Last Hour
+                        </h3>
+                        <div style="position: relative; height: 280px;">
+                            <canvas id="requestTimelineChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- HTTP Metrics Grid -->
+                <div style="padding: 0 24px 24px 24px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;">
+                    
+                    <!-- Requests by Status (Pie Chart) -->
+                    <div style="background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 20px;">
+                        <h4 style="margin: 0 0 16px 0; font-size: 16px; font-weight: 600; color: #1F2937;">
+                            <i class="fas fa-chart-pie" style="margin-right: 8px; color: #8B5CF6;"></i>
+                            Requests by Status
+                        </h4>
+                        <div style="position: relative; height: 340px;">
+                            <canvas id="statusPieChart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <!-- Top 10 Most Accessed URLs -->
+                    <div style="background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 20px;">
+                        <h4 style="margin: 0 0 16px 0; font-size: 16px; font-weight: 600; color: #1F2937;">
+                            <i class="fas fa-fire" style="margin-right: 8px; color: #F59E0B;"></i>
+                            Top 10 Most Accessed
+                        </h4>
+                        <div id="topUrlsList" style="min-height: 340px; font-size: 12px;">
+                            <div style="text-align: center; padding: 40px; color: #9CA3AF;">
+                                <i class="fas fa-spinner fa-spin" style="font-size: 24px;"></i>
+                                <div style="margin-top: 8px;">Loading...</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Top 10 Slowest URLs -->
+                    <div style="background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 20px;">
+                        <h4 style="margin: 0 0 16px 0; font-size: 16px; font-weight: 600; color: #1F2937;">
+                            <i class="fas fa-turtle" style="margin-right: 8px; color: #EF4444;"></i>
+                            Top 10 Slowest
+                        </h4>
+                        <div id="slowestUrlsList" style="min-height: 340px; font-size: 12px;">
+                            <div style="text-align: center; padding: 40px; color: #9CA3AF;">
+                                <i class="fas fa-spinner fa-spin" style="font-size: 24px;"></i>
+                                <div style="margin-top: 8px;">Loading...</div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -116,36 +183,21 @@
                                 <div id="database-status-text" style="font-size: 12px; color: #6B7280;">Checking...</div>
                             </div>
                             
-                            <!-- 3. MinIO Cluster Information -->
-                            <div id="minio-cluster-container" style="padding: 16px; background: #F9FAFB; border-radius: 6px; border-left: 4px solid #3B82F6; display: none;">
-                                <div style="font-weight: 600; color: #1F2937; font-size: 14px; margin-bottom: 12px;">
-                                    <i class="fas fa-server" style="margin-right: 8px; color: #3B82F6;"></i>
-                                    MinIO Cluster
-                                </div>
-                                <div id="minio-cluster-info" style="font-size: 12px; color: #6B7280;">
-                                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px;">
-                                        <div>
-                                            <div style="color: #9CA3AF; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Buckets</div>
-                                            <div id="minio-buckets" style="font-size: 16px; font-weight: 600; color: #1F2937; margin-top: 4px;">-</div>
-                                        </div>
-                                        <div>
-                                            <div style="color: #9CA3AF; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Admin</div>
-                                            <div id="minio-admin-status" style="font-size: 11px; font-weight: 600; color: #6B7280; margin-top: 4px;">
-                                                <i class="fas fa-spinner fa-spin"></i> Checking...
-                                            </div>
+                            <!-- 3. MinIO Cluster -->
+                            <div id="minio-cluster-container" class="status-item" style="padding: 12px 16px; background: #F9FAFB; border-radius: 6px; border-left: 4px solid #9CA3AF; display: none;">
+                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                                    <div style="display: flex; align-items: center; gap: 12px;">
+                                        <div id="minio-cluster-status-icon" style="width: 12px; height: 12px; border-radius: 50%; background: #9CA3AF;"></div>
+                                        <div style="font-weight: 600; color: #1F2937; font-size: 14px;">
+                                            <i class="fas fa-server" style="margin-right: 8px;"></i>
+                                            MinIO Cluster
                                         </div>
                                     </div>
-                                    <div style="margin-bottom: 8px;">
-                                        <div style="color: #9CA3AF; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Endpoint</div>
-                                        <div id="minio-endpoint" style="font-size: 10px; color: #6B7280; margin-top: 4px; word-break: break-all;">-</div>
-                                    </div>
-                                    <div id="minio-admin-info" style="margin-top: 8px; padding: 6px 8px; background: #D1FAE5; border-left: 3px solid #10B981; border-radius: 4px; font-size: 10px; color: #065F46; display: none;">
-                                    </div>
-                                    <div id="minio-cluster-note" style="margin-top: 8px; padding: 6px 8px; background: #FEF3C7; border-left: 3px solid #F59E0B; border-radius: 4px; font-size: 10px; color: #92400E; display: none;">
-                                        <i class="fas fa-info-circle" style="margin-right: 4px;"></i>
-                                        <span></span>
+                                    <div id="minio-cluster-status-badge" style="padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; background: #F3F4F6; color: #6B7280;">
+                                        <i class="fas fa-spinner fa-spin"></i>
                                     </div>
                                 </div>
+                                <div id="minio-endpoint" style="font-size: 12px; color: #6B7280; word-break: break-all;">-</div>
                             </div>
                             
                             <!-- 4. MinIO Storage Status -->
@@ -170,6 +222,270 @@
                     </div>
                 </div>
             </div>
+            
+            <!-- Chart.js Library -->
+            <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+            
+            <!-- Custom Styles for Metrics -->
+            <style>
+                /* Tooltip hover effect for URL lists */
+                .metric-item {
+                    transition: transform 0.15s ease, box-shadow 0.15s ease;
+                }
+                .metric-item:hover {
+                    transform: translateX(2px);
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                }
+            </style>
+            
+            <!-- HTTP Metrics Script -->
+            <script th:inline="javascript">
+            (function() {
+                // Chart instances
+                let timelineChart = null;
+                let statusPieChart = null;
+                
+                // Initialize Timeline Chart
+                function initTimelineChart() {
+                    const ctx = document.getElementById('requestTimelineChart').getContext('2d');
+                    timelineChart = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: [],
+                            datasets: [
+                                {
+                                    label: 'Request Count',
+                                    data: [],
+                                    borderColor: '#3B82F6',
+                                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                                    tension: 0.4,
+                                    yAxisID: 'y'
+                                },
+                                {
+                                    label: 'Avg Response Time (ms)',
+                                    data: [],
+                                    borderColor: '#F59E0B',
+                                    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                                    tension: 0.4,
+                                    yAxisID: 'y1'
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            interaction: {
+                                mode: 'index',
+                                intersect: false
+                            },
+                            scales: {
+                                x: {
+                                    display: true,
+                                    title: {
+                                        display: true,
+                                        text: 'Time'
+                                    },
+                                    ticks: {
+                                        maxRotation: 45,
+                                        minRotation: 45
+                                    }
+                                },
+                                y: {
+                                    type: 'linear',
+                                    display: true,
+                                    position: 'left',
+                                    title: {
+                                        display: true,
+                                        text: 'Request Count',
+                                        color: '#3B82F6'
+                                    }
+                                },
+                                y1: {
+                                    type: 'linear',
+                                    display: true,
+                                    position: 'right',
+                                    title: {
+                                        display: true,
+                                        text: 'Response Time (ms)',
+                                        color: '#F59E0B'
+                                    },
+                                    grid: {
+                                        drawOnChartArea: false
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+                
+                // Initialize Status Pie Chart
+                function initStatusPieChart() {
+                    const ctx = document.getElementById('statusPieChart').getContext('2d');
+                    statusPieChart = new Chart(ctx, {
+                        type: 'doughnut',
+                        data: {
+                            labels: [],
+                            datasets: [{
+                                data: [],
+                                backgroundColor: [
+                                    '#10B981', // 2xx - Green
+                                    '#3B82F6', // 3xx - Blue
+                                    '#F59E0B', // 4xx - Yellow
+                                    '#EF4444', // 5xx - Red
+                                    '#8B5CF6'  // Other - Purple
+                                ],
+                                borderWidth: 2,
+                                borderColor: '#ffffff'
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    position: 'bottom',
+                                    labels: {
+                                        boxWidth: 12,
+                                        padding: 10,
+                                        font: {
+                                            size: 11
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+                
+                // Load HTTP Metrics
+                function loadHttpMetrics() {
+                    fetch('/api/metrics/http')
+                        .then(response => response.json())
+                        .then(data => {
+                            updateTimelineChart(data.timeline);
+                            updateStatusPieChart(data.byStatus);
+                            updateTopUrlsList(data.topUrls);
+                            updateSlowestUrlsList(data.slowestUrls);
+                        })
+                        .catch(error => {
+                            console.error('Error loading HTTP metrics:', error);
+                        });
+                }
+                
+                // Update Timeline Chart
+                function updateTimelineChart(timeline) {
+                    if (!timelineChart || !timeline) return;
+                    
+                    const labels = timeline.timestamps.map(ts => {
+                        const date = new Date(ts);
+                        return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                    });
+                    
+                    timelineChart.data.labels = labels;
+                    timelineChart.data.datasets[0].data = timeline.counts;
+                    timelineChart.data.datasets[1].data = timeline.avgTimes;
+                    timelineChart.update();
+                }
+                
+                // Update Status Pie Chart
+                function updateStatusPieChart(byStatus) {
+                    if (!statusPieChart || !byStatus) return;
+                    
+                    const labels = Object.keys(byStatus);
+                    const data = Object.values(byStatus);
+                    
+                    statusPieChart.data.labels = labels;
+                    statusPieChart.data.datasets[0].data = data;
+                    statusPieChart.update();
+                }
+                
+                // Helper function to truncate URI
+                function truncateUri(uri, maxLength = 35) {
+                    if (uri.length <= maxLength) return uri;
+                    return uri.substring(0, maxLength) + '...';
+                }
+                
+                // Update Top URLs List
+                function updateTopUrlsList(topUrls) {
+                    const container = document.getElementById('topUrlsList');
+                    if (!container || !topUrls || topUrls.length === 0) {
+                        container.innerHTML = '<div style="text-align: center; padding: 40px; color: #9CA3AF;">No data available</div>';
+                        return;
+                    }
+                    
+                    let html = '<div style="display: flex; flex-direction: column; gap: 4px;">';
+                    
+                    topUrls.forEach((url, index) => {
+                        const avgTime = url.avgTime.toFixed(1);
+                        const truncatedUri = truncateUri(url.uri);
+                        html += `
+                            <div class="metric-item" title="${url.uri}" style="padding: 6px 8px; background: #F9FAFB; border-radius: 3px; border-left: 2px solid #3B82F6; cursor: help; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                                <div style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0;">
+                                    <span style="font-weight: 600; color: #6B7280; font-size: 9px; flex-shrink: 0;">#${index + 1}</span>
+                                    <span style="color: #4B5563; font-size: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${truncatedUri}</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
+                                    <span style="font-weight: 600; color: #3B82F6; font-size: 10px;">${url.count}</span>
+                                    <span style="color: #9CA3AF; font-size: 9px;">·</span>
+                                    <span style="color: #6B7280; font-size: 9px;">${avgTime}ms</span>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    html += '</div>';
+                    container.innerHTML = html;
+                }
+                
+                // Update Slowest URLs List
+                function updateSlowestUrlsList(slowestUrls) {
+                    const container = document.getElementById('slowestUrlsList');
+                    if (!container || !slowestUrls || slowestUrls.length === 0) {
+                        container.innerHTML = '<div style="text-align: center; padding: 40px; color: #9CA3AF;">No data available</div>';
+                        return;
+                    }
+                    
+                    let html = '<div style="display: flex; flex-direction: column; gap: 4px;">';
+                    
+                    slowestUrls.forEach((url, index) => {
+                        const avgTime = url.avgTime.toFixed(1);
+                        const truncatedUri = truncateUri(url.uri);
+                        
+                        // Intensidade de cor baseada no ranking (mais vermelho para os primeiros)
+                        const redIntensity = Math.max(239 - (index * 15), 200);
+                        const borderColor = `rgb(${redIntensity}, 68, 68)`;
+                        const bgColor = index < 3 ? '#FEF2F2' : '#FEF9F9';
+                        
+                        html += `
+                            <div class="metric-item" title="${url.uri}" style="padding: 6px 8px; background: ${bgColor}; border-radius: 3px; border-left: 2px solid ${borderColor}; cursor: help; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                                <div style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0;">
+                                    <span style="font-weight: 600; color: #6B7280; font-size: 9px; flex-shrink: 0;">#${index + 1}</span>
+                                    <span style="color: #4B5563; font-size: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${truncatedUri}</span>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
+                                    <span style="font-weight: 600; color: #EF4444; font-size: 10px;">${avgTime}ms</span>
+                                    <span style="color: #9CA3AF; font-size: 9px;">·</span>
+                                    <span style="color: #6B7280; font-size: 9px;">${url.count}×</span>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    html += '</div>';
+                    container.innerHTML = html;
+                }
+                
+                // Initialize charts
+                initTimelineChart();
+                initStatusPieChart();
+                
+                // Initial load
+                loadHttpMetrics();
+                
+                // Refresh every 10 seconds
+                setInterval(loadHttpMetrics, 10000);
+            })();
+            </script>
             
             <!-- Status Check Script -->
             <script th:inline="javascript">
@@ -295,88 +611,55 @@
                         .then(response => response.json())
                         .then(data => {
                             const container = document.getElementById('minio-cluster-container');
+                            const icon = document.getElementById('minio-cluster-status-icon');
+                            const badge = document.getElementById('minio-cluster-status-badge');
+                            const endpointDiv = document.getElementById('minio-endpoint');
+                            const bucketsStatDiv = document.getElementById('minio-buckets-stat');
                             
                             if (data.status === 'disabled') {
                                 container.style.display = 'none';
+                                if (bucketsStatDiv) bucketsStatDiv.textContent = '-';
                                 return;
                             }
                             
                             container.style.display = 'block';
                             
                             if (data.info && data.info.bucketCount !== undefined) {
-                                document.getElementById('minio-buckets').textContent = data.info.bucketCount;
-                                
-                                // Update endpoint if available
-                                if (data.info.endpoint) {
-                                    const endpointDiv = document.getElementById('minio-endpoint');
-                                    if (endpointDiv) {
-                                        endpointDiv.textContent = data.info.endpoint;
-                                    }
+                                // Update buckets count in the stat card (first row)
+                                if (bucketsStatDiv) {
+                                    bucketsStatDiv.textContent = data.info.bucketCount;
                                 }
                                 
-                                // Show admin status with appropriate styling
-                                const adminStatusDiv = document.getElementById('minio-admin-status');
-                                const adminInfoDiv = document.getElementById('minio-admin-info');
-                                const noteDiv = document.getElementById('minio-cluster-note');
+                                // Update endpoint
+                                if (data.info.endpoint && endpointDiv) {
+                                    endpointDiv.textContent = data.info.endpoint;
+                                }
                                 
-                                if (adminStatusDiv) {
-                                    const adminStatus = data.info.adminStatus || 'not_configured';
-                                    
-                                    if (adminStatus === 'operational') {
-                                        // Admin is configured and working
-                                        adminStatusDiv.innerHTML = '<i class="fas fa-check-circle" style="color: #10B981;"></i> Operational';
-                                        
-                                        if (adminInfoDiv && data.info.adminInfo && data.info.adminInfo.credentialsValidated) {
-                                            adminInfoDiv.style.display = 'block';
-                                            adminInfoDiv.innerHTML = '<i class="fas fa-shield-alt" style="color: #10B981; margin-right: 4px;"></i> ' +
-                                                'Admin credentials validated - ' + data.info.adminInfo.bucketsAccessible + ' bucket(s) accessible';
-                                        }
-                                        
-                                        // Hide warning note
-                                        noteDiv.style.display = 'none';
-                                        
-                                    } else if (adminStatus === 'error') {
-                                        // Admin is configured but not working
-                                        adminStatusDiv.innerHTML = '<i class="fas fa-exclamation-triangle" style="color: #F59E0B;"></i> Error';
-                                        
-                                        if (adminInfoDiv) {
-                                            adminInfoDiv.style.display = 'block';
-                                            adminInfoDiv.style.background = '#FEF2F2';
-                                            adminInfoDiv.style.borderLeftColor = '#EF4444';
-                                            adminInfoDiv.style.color = '#991B1B';
-                                            adminInfoDiv.innerHTML = '<i class="fas fa-times-circle" style="color: #EF4444; margin-right: 4px;"></i> ' +
-                                                'Admin connection failed - check credentials';
-                                        }
-                                        
-                                        if (data.info.note) {
-                                            noteDiv.style.display = 'block';
-                                            noteDiv.querySelector('span').textContent = data.info.note;
-                                        }
-                                        
-                                    } else {
-                                        // Admin not configured
-                                        adminStatusDiv.innerHTML = '<i class="fas fa-times-circle" style="color: #9CA3AF;"></i> Not Configured';
-                                        
-                                        // Hide admin info
-                                        if (adminInfoDiv) {
-                                            adminInfoDiv.style.display = 'none';
-                                        }
-                                        
-                                        // Show configuration hint
-                                        if (data.info.note) {
-                                            noteDiv.style.display = 'block';
-                                            noteDiv.style.background = '#EFF6FF';
-                                            noteDiv.style.borderLeftColor = '#3B82F6';
-                                            noteDiv.style.color = '#1E40AF';
-                                            noteDiv.innerHTML = '<i class="fas fa-info-circle" style="margin-right: 4px;"></i> ' +
-                                                '<span>' + data.info.note + '</span>';
-                                        }
-                                    }
+                                // Determine status: if admin is operational or cluster is available, show Healthy
+                                let clusterStatus = 'healthy';
+                                if (data.info.adminStatus === 'error' || !data.info.available) {
+                                    clusterStatus = 'warning';
+                                }
+                                
+                                const config = statusConfig[clusterStatus];
+                                
+                                // Update visual elements
+                                if (icon) icon.style.background = config.color;
+                                if (container) {
+                                    container.style.background = config.bgColor;
+                                    container.style.borderLeftColor = config.borderColor;
+                                }
+                                if (badge) {
+                                    badge.innerHTML = '<i class="fas ' + config.icon + '"></i> ' + config.badgeText;
+                                    badge.style.background = config.badgeBg;
+                                    badge.style.color = config.badgeColor;
                                 }
                             }
                         })
                         .catch(error => {
                             console.error('Error checking MinIO cluster:', error);
+                            const bucketsStatDiv = document.getElementById('minio-buckets-stat');
+                            if (bucketsStatDiv) bucketsStatDiv.textContent = '-';
                         });
                 }
                 

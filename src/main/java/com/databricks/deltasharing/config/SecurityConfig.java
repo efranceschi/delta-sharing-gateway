@@ -2,7 +2,6 @@ package com.databricks.deltasharing.config;
 
 import com.databricks.deltasharing.security.BearerTokenAuthenticationFilter;
 import com.databricks.deltasharing.service.UserService;
-import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
@@ -107,7 +106,9 @@ public class SecurityConfig {
                     "/js/**",
                     "/images/**",
                     "/favicon.ico",
-                    "/fake-files/**"  // Allow public access to fake Parquet files
+                    "/fake-files/**",  // Allow public access to fake Parquet files
+                    "/actuator/**",    // Actuator endpoints for monitoring
+                    "/api/metrics/**"  // Custom metrics endpoints
                 ).permitAll()
                 // All other web pages require authentication
                 .anyRequest().authenticated()
