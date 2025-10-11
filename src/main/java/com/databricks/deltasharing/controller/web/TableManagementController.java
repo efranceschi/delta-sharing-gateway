@@ -22,8 +22,24 @@ public class TableManagementController {
     private final DeltaSchemaManagementService schemaService;
     
     @GetMapping("/new")
-    public String showCreateForm(Model model) {
-        model.addAttribute("table", new DeltaTableDTO());
+    public String showCreateForm(@RequestParam(required = false) Long schemaId, Model model) {
+        DeltaTableDTO table = new DeltaTableDTO();
+        
+        // If schemaId is provided, pre-populate it and get schema details for breadcrumb
+        if (schemaId != null) {
+            try {
+                var schema = schemaService.getSchemaById(schemaId);
+                table.setSchemaId(schemaId);
+                table.setSchemaName(schema.getName());
+                table.setShareId(schema.getShareId());
+                table.setShareName(schema.getShareName());
+                log.info("Creating new table with pre-selected schema: {} (ID: {})", schema.getName(), schemaId);
+            } catch (Exception e) {
+                log.warn("Schema ID {} not found, proceeding without pre-selection", schemaId);
+            }
+        }
+        
+        model.addAttribute("table", table);
         model.addAttribute("schemas", schemaService.getAllSchemas());
         model.addAttribute("isEdit", false);
         return "admin/tables/form";
@@ -61,11 +77,15 @@ public class TableManagementController {
     public String showEditForm(@PathVariable Long id, Model model, RedirectAttributes redirectAttributes) {
         try {
             DeltaTableDTO table = tableService.getTableById(id);
+            log.info("Table edit form - ID: {}, Name: {}, ShareId: {}, ShareName: {}, SchemaId: {}, SchemaName: {}", 
+                     table.getId(), table.getName(), table.getShareId(), table.getShareName(), 
+                     table.getSchemaId(), table.getSchemaName());
             model.addAttribute("table", table);
             model.addAttribute("schemas", schemaService.getAllSchemas());
             model.addAttribute("isEdit", true);
             return "admin/tables/form";
         } catch (Exception e) {
+            log.error("Error loading table for edit: {}", e.getMessage());
             redirectAttributes.addFlashAttribute("errorMessage", "Table not found");
             return "redirect:/";
         }

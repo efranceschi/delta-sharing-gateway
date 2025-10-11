@@ -30,8 +30,22 @@ public class SchemaManagementController {
     }
     
     @GetMapping("/new")
-    public String showCreateForm(Model model) {
-        model.addAttribute("schema", new DeltaSchemaDTO());
+    public String showCreateForm(@RequestParam(required = false) Long shareId, Model model) {
+        DeltaSchemaDTO schema = new DeltaSchemaDTO();
+        
+        // If shareId is provided, pre-populate it and get share details for breadcrumb
+        if (shareId != null) {
+            try {
+                var share = shareService.getShareById(shareId);
+                schema.setShareId(shareId);
+                schema.setShareName(share.getName());
+                log.info("Creating new schema with pre-selected share: {} (ID: {})", share.getName(), shareId);
+            } catch (Exception e) {
+                log.warn("Share ID {} not found, proceeding without pre-selection", shareId);
+            }
+        }
+        
+        model.addAttribute("schema", schema);
         model.addAttribute("shares", shareService.getAllShares());
         model.addAttribute("isEdit", false);
         return "admin/schemas/form";

@@ -8,8 +8,8 @@
         <title th:text="${isEdit ? 'Edit Schema' : 'New Schema'}">Schema Form</title>
         
         <th:block th:fragment="content">
-            <!-- Breadcrumb -->
-            <nav class="db-breadcrumb" th:if="${isEdit and schema.shareId != null}">
+            <!-- Breadcrumb with full hierarchy (edit or new with shareId) -->
+            <nav class="db-breadcrumb" th:if="${schema.shareId != null}">
                 <div class="db-breadcrumb-item">
                     <a href="/"><i class="fas fa-home"></i> Home</a>
                 </div>
@@ -23,12 +23,12 @@
                 </div>
                 <span class="db-breadcrumb-separator">›</span>
                 <div class="db-breadcrumb-item">
-                    <span class="db-breadcrumb-current" th:text="${schema.name}">schema_name</span>
+                    <span class="db-breadcrumb-current" th:text="${isEdit ? schema.name : 'New'}">New</span>
                 </div>
             </nav>
             
-            <!-- Breadcrumb for new schema or when share info not available -->
-            <nav class="db-breadcrumb" th:if="${!isEdit or schema.shareId == null}">
+            <!-- Breadcrumb fallback (new schema without share context) -->
+            <nav class="db-breadcrumb" th:if="${schema.shareId == null}">
                 <div class="db-breadcrumb-item">
                     <a href="/"><i class="fas fa-home"></i> Home</a>
                 </div>

@@ -31,7 +31,7 @@ public class DeltaTableManagementService {
     
     @Transactional(readOnly = true)
     public DeltaTableDTO getTableById(Long id) {
-        DeltaTable table = tableRepository.findById(id)
+        DeltaTable table = tableRepository.findByIdWithSchemaAndShare(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Table not found with id: " + id));
         return convertToDTO(table);
     }
@@ -63,7 +63,7 @@ public class DeltaTableManagementService {
     
     @Transactional
     public DeltaTableDTO updateTable(Long id, DeltaTableDTO dto) {
-        DeltaTable table = tableRepository.findById(id)
+        DeltaTable table = tableRepository.findByIdWithSchemaAndShare(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Table not found with id: " + id));
         
         DeltaSchema schema = schemaRepository.findById(dto.getSchemaId())

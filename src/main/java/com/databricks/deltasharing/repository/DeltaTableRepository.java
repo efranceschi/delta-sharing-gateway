@@ -12,6 +12,12 @@ import java.util.Optional;
 @Repository
 public interface DeltaTableRepository extends JpaRepository<DeltaTable, Long> {
     
+    @Query("SELECT t FROM DeltaTable t " +
+           "JOIN FETCH t.schema s " +
+           "JOIN FETCH s.share " +
+           "WHERE t.id = :id")
+    Optional<DeltaTable> findByIdWithSchemaAndShare(@Param("id") Long id);
+    
     @Query("SELECT t FROM DeltaTable t WHERE t.name = :tableName " +
            "AND t.schema.name = :schemaName AND t.schema.share.name = :shareName")
     Optional<DeltaTable> findByNameAndSchemaNameAndShareName(
