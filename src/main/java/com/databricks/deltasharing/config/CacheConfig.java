@@ -1,10 +1,13 @@
 package com.databricks.deltasharing.config;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.binder.cache.CaffeineCacheMetrics;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
+import org.springframework.cache.caffeine.CaffeineCache;
 import org.springframework.cache.caffeine.CaffeineCacheManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -46,7 +49,7 @@ public class CacheConfig {
      * @return Configured CacheManager
      */
     @Bean
-    public CacheManager cacheManager() {
+    public CacheManager cacheManager(MeterRegistry meterRegistry) {
         log.info("Initializing Cache Manager:");
         log.info("  - Schema Cache TTL: {} minutes", schemaCacheTtlMinutes);
         log.info("  - Schema Cache Max Size: {} entries", schemaCacheMaxSize);
@@ -99,7 +102,29 @@ public class CacheConfig {
         );
         
         log.info("Cache Manager initialized successfully");
+        
+        // Register metrics for default caches
+        registerCacheMetrics(cacheManager, "tableSchemas", meterRegistry);
+        registerCacheMetrics(cacheManager, "partitionColumns", meterRegistry);
+        registerCacheMetrics(cacheManager, "minioHealthCheck", meterRegistry);
+        registerCacheMetrics(cacheManager, "databaseHealthCheck", meterRegistry);
+        registerCacheMetrics(cacheManager, "jvmHealthCheck", meterRegistry);
+        registerCacheMetrics(cacheManager, "minioClusterHealthCheck", meterRegistry);
+        
         return cacheManager;
+    }
+    
+    /**
+     * Register cache metrics with Micrometer
+     */
+    private void registerCacheMetrics(CacheManager cacheManager, String cacheName, MeterRegistry meterRegistry) {
+        org.springframework.cache.Cache cache = cacheManager.getCache(cacheName);
+        if (cache instanceof CaffeineCache) {
+            CaffeineCache caffeineCache = (CaffeineCache) cache;
+            com.github.benmanes.caffeine.cache.Cache<Object, Object> nativeCache = caffeineCache.getNativeCache();
+            CaffeineCacheMetrics.monitor(meterRegistry, nativeCache, cacheName);
+            log.info("  - Cache '{}' registered with Micrometer", cacheName);
+        }
     }
 }
 

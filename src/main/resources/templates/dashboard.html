@@ -280,7 +280,7 @@
                         data: {
                             labels: ['Cache Hits', 'Cache Misses'],
                             datasets: [{
-                                data: [0, 0],
+                                data: [1, 0],  // Valores iniciais para garantir visibilidade
                                 backgroundColor: [
                                     '#10B981', // Green for hits
                                     '#EF4444'  // Red for misses
@@ -300,6 +300,23 @@
                                         padding: 10,
                                         font: {
                                             size: 11
+                                        },
+                                        generateLabels: function(chart) {
+                                            const data = chart.data;
+                                            if (data.labels.length && data.datasets.length) {
+                                                return data.labels.map((label, i) => {
+                                                    const value = data.datasets[0].data[i];
+                                                    const total = data.datasets[0].data.reduce((a, b) => a + b, 0);
+                                                    const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0.0';
+                                                    return {
+                                                        text: label + ': ' + value.toLocaleString() + ' (' + percentage + '%)',
+                                                        fillStyle: data.datasets[0].backgroundColor[i],
+                                                        hidden: false,
+                                                        index: i
+                                                    };
+                                                });
+                                            }
+                                            return [];
                                         }
                                     }
                                 },
@@ -453,14 +470,39 @@
                 
                 // Update Cache Efficiency Chart
                 function updateCacheChart(cache) {
-                    if (!cacheEfficiencyChart || !cache) return;
+                    console.log('Cache data received:', cache);
+                    
+                    if (!cacheEfficiencyChart) {
+                        console.error('Cache chart not initialized');
+                        return;
+                    }
+                    
+                    if (!cache) {
+                        console.warn('No cache data available');
+                        // Show default data to indicate no cache activity yet
+                        cacheEfficiencyChart.data.datasets[0].data = [0, 1];
+                        cacheEfficiencyChart.update();
+                        document.getElementById('cacheHitRate').textContent = '0.0%';
+                        document.getElementById('cacheTotal').textContent = '0';
+                        return;
+                    }
                     
                     const hits = cache.hits || 0;
                     const misses = cache.misses || 0;
                     const total = cache.total || 0;
                     const hitRate = cache.hitRate || 0;
                     
-                    cacheEfficiencyChart.data.datasets[0].data = [hits, misses];
+                    console.log('Cache stats - Hits:', hits, 'Misses:', misses, 'Total:', total, 'Hit Rate:', hitRate);
+                    
+                    // If no data yet, show a placeholder
+                    if (total === 0) {
+                        cacheEfficiencyChart.data.datasets[0].data = [0, 1];
+                        cacheEfficiencyChart.data.labels = ['No Cache Data', 'Waiting for activity'];
+                    } else {
+                        cacheEfficiencyChart.data.datasets[0].data = [hits, misses];
+                        cacheEfficiencyChart.data.labels = ['Cache Hits', 'Cache Misses'];
+                    }
+                    
                     cacheEfficiencyChart.update();
                     
                     // Update stats
@@ -469,7 +511,9 @@
                     
                     // Update hit rate color based on performance
                     const hitRateElement = document.getElementById('cacheHitRate');
-                    if (hitRate >= 80) {
+                    if (total === 0) {
+                        hitRateElement.style.color = '#6B7280'; // Gray for no data
+                    } else if (hitRate >= 80) {
                         hitRateElement.style.color = '#10B981'; // Green
                     } else if (hitRate >= 50) {
                         hitRateElement.style.color = '#F59E0B'; // Yellow

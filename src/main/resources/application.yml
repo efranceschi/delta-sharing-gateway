@@ -262,3 +262,7 @@ management:
         request:
           autotime:
             enabled: true
+    enable:
+      cache: true
+    cache:
+      instrument-cache: true
