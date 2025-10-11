@@ -52,8 +52,44 @@ public class MetricsController {
         result.put("topUrls", getTopAccessedUrls(10));
         result.put("slowestUrls", getSlowestUrls(10));
         result.put("timeline", getRequestTimeline());
+        result.put("cache", getCacheMetrics());
         
         return result;
+    }
+    
+    private Map<String, Object> getCacheMetrics() {
+        Map<String, Object> cacheStats = new HashMap<>();
+        
+        // Usar arrays para permitir modificação em lambda
+        final long[] totalHits = {0};
+        final long[] totalMisses = {0};
+        
+        // Coletar métricas de todos os caches
+        Search.in(meterRegistry)
+            .name("cache.gets")
+            .meters()
+            .forEach(meter -> {
+                if (meter instanceof io.micrometer.core.instrument.Counter) {
+                    io.micrometer.core.instrument.Counter counter = (io.micrometer.core.instrument.Counter) meter;
+                    String result = counter.getId().getTag("result");
+                    
+                    if ("hit".equals(result)) {
+                        totalHits[0] += (long) counter.count();
+                    } else if ("miss".equals(result)) {
+                        totalMisses[0] += (long) counter.count();
+                    }
+                }
+            });
+        
+        long total = totalHits[0] + totalMisses[0];
+        double hitRate = total > 0 ? (totalHits[0] * 100.0 / total) : 0.0;
+        
+        cacheStats.put("hits", totalHits[0]);
+        cacheStats.put("misses", totalMisses[0]);
+        cacheStats.put("total", total);
+        cacheStats.put("hitRate", hitRate);
+        
+        return cacheStats;
     }
     
     private Map<String, Long> getRequestsByStatus() {
