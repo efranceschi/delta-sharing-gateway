@@ -217,8 +217,9 @@ public class DeltaSharingController {
         
         log.info("Delta Sharing API: Querying version for table: {}.{}.{}", share, schema, table);
         
-        // Return simple version response
-        String response = "{\"deltaTableVersion\":0}";
+        // Get actual table version from service
+        Long version = deltaSharingService.queryTableVersion(share, schema, table);
+        String response = String.format("{\"deltaTableVersion\":%d}", version);
         
         return ResponseEntity.ok()
                 .header("Delta-Sharing-Capabilities", DELTA_SHARING_CAPABILITIES)
@@ -289,13 +290,16 @@ public class DeltaSharingController {
             @Parameter(description = "Ending version for CDF")
             @RequestParam(required = false) Long endingVersion) {
         
-        log.info("Delta Sharing API: Querying changes for table: {}.{}.{}", share, schema, table);
+        log.info("Delta Sharing API: Querying changes for table: {}.{}.{} from version {} to {}", 
+                share, schema, table, startingVersion, endingVersion);
         
-        // CDF not implemented yet - return empty response
-        String response = "";
+        // Get table changes from service
+        String response = deltaSharingService.queryTableChanges(
+                share, schema, table, startingVersion, endingVersion);
         
         return ResponseEntity.ok()
                 .header("Delta-Sharing-Capabilities", DELTA_SHARING_CAPABILITIES)
+                .header("Delta-Table-Version", "1")
                 .contentType(MediaType.parseMediaType("application/x-ndjson"))
                 .body(response);
     }

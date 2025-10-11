@@ -641,6 +641,147 @@ public class MinIOFileStorageService implements FileStorageService {
     }
     
     /**
+     * Get the current version of a Delta table
+     * 
+     * @param tableName Name of the table
+     * @return Current version number
+     */
+    public Long getTableVersion(String tableName) {
+        try {
+            S3Location s3Location = parseS3LocationFromTableName(tableName);
+            String deltaLogPath = s3Location.path + "_delta_log/";
+            Long version = findLatestVersion(s3Location.bucket, deltaLogPath);
+            log.info("Current version for table {}: {}", tableName, version);
+            return version;
+        } catch (Exception e) {
+            log.error("Error getting table version for: {}", tableName, e);
+            return 0L;
+        }
+    }
+    
+    /**
+     * Get table files for a specific version (Time Travel support)
+     * 
+     * @param table DeltaTable entity
+     * @param version Specific version to query (null for latest)
+     * @return List of file responses for the specified version
+     */
+    public List<FileResponse> getTableFilesByVersion(DeltaTable table, Long version) {
+        try {
+            return getTableFilesFromDeltaLog(table, version, null, null);
+        } catch (Exception e) {
+            log.error("Error getting table files by version for table: {}, version: {}", 
+                     table.getName(), version, e);
+            return new ArrayList<>();
+        }
+    }
+    
+    /**
+     * Get table changes (CDF - Change Data Feed)
+     * 
+     * @param table DeltaTable entity
+     * @param startingVersion Starting version (inclusive)
+     * @param endingVersion Ending version (inclusive, null for latest)
+     * @return List of file responses containing change data
+     */
+    public List<FileResponse> getTableChanges(DeltaTable table, Long startingVersion, Long endingVersion) {
+        log.info("Getting table changes for: {} from version {} to {}", 
+                table.getName(), startingVersion, endingVersion);
+        
+        if (!isAvailable()) {
+            log.warn("MinIO storage service is not available");
+            return new ArrayList<>();
+        }
+        
+        try {
+            S3Location s3Location = resolveTableLocation(table);
+            String deltaLogPath = s3Location.path + "_delta_log/";
+            
+            // Determine ending version if not specified
+            Long endVersion = endingVersion != null ? endingVersion : 
+                              findLatestVersion(s3Location.bucket, deltaLogPath);
+            
+            if (startingVersion == null || startingVersion < 0) {
+                startingVersion = 0L;
+            }
+            
+            log.debug("Reading CDF from version {} to {} for table: {}", 
+                     startingVersion, endVersion, table.getName());
+            
+            List<FileResponse> allChanges = new ArrayList<>();
+            
+            // Read Delta Log for each version in the range
+            for (long version = startingVersion; version <= endVersion; version++) {
+                try {
+                    List<FileResponse> versionChanges = readChangesFromVersion(
+                            s3Location, deltaLogPath, version);
+                    allChanges.addAll(versionChanges);
+                } catch (Exception e) {
+                    log.warn("Could not read changes for version {}: {}", version, e.getMessage());
+                }
+            }
+            
+            log.info("Found {} change entries for table {} from version {} to {}", 
+                    allChanges.size(), table.getName(), startingVersion, endVersion);
+            
+            return allChanges;
+            
+        } catch (Exception e) {
+            log.error("Error reading table changes for: {}", table.getName(), e);
+            return new ArrayList<>();
+        }
+    }
+    
+    /**
+     * Read changes from a specific version
+     */
+    private List<FileResponse> readChangesFromVersion(S3Location s3Location, 
+                                                       String deltaLogPath, 
+                                                       Long version) {
+        String logFileName = String.format("%020d.json", version);
+        String logObjectName = deltaLogPath + logFileName;
+        
+        log.debug("Reading CDF from log file: {}/{}", s3Location.bucket, logObjectName);
+        
+        List<FileResponse> changes = new ArrayList<>();
+        
+        try (InputStream logStream = minioClient.getObject(
+                GetObjectArgs.builder()
+                        .bucket(s3Location.bucket)
+                        .object(logObjectName)
+                        .build())) {
+            
+            if (deltaLogReader != null) {
+                // Read Delta snapshot for this version
+                com.databricks.deltasharing.dto.delta.DeltaSnapshot snapshot = 
+                        deltaLogReader.readDeltaLog(logStream, version);
+                
+                // Process Add actions (new/changed files)
+                if (snapshot.getAddActions() != null) {
+                    for (AddAction addAction : snapshot.getAddActions()) {
+                        FileResponse fileResponse = createFileResponseFromAddAction(
+                                addAction, s3Location, version);
+                        
+                        // Mark as CDF addition
+                        fileResponse.setVersion(version);
+                        fileResponse.setChangeType("insert");
+                        
+                        changes.add(fileResponse);
+                    }
+                }
+                
+                // Note: For true CDF, we would also need to track RemoveAction
+                // which would require parsing the log file directly
+                // For now, we're only returning additions
+            }
+        } catch (Exception e) {
+            log.debug("Could not read CDF for version {}: {}", version, e.getMessage());
+        }
+        
+        return changes;
+    }
+    
+    /**
      * Get table schema from Delta log metadata
      * For MinIO, we read the schema from the Delta transaction log stored in MinIO
      * Cached to avoid repeated MinIO reads and Delta log parsing

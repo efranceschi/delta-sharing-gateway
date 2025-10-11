@@ -58,4 +58,10 @@ public class FileResponse {
      * Timestamp when the file was added
      */
     private Long timestamp;
+    
+    /**
+     * Type of change (for CDF - Change Data Feed)
+     * Values: "insert", "update", "delete"
+     */
+    private String changeType;
 }

@@ -33,6 +33,7 @@ public class DeltaSharingService {
     private final DeltaSchemaRepository schemaRepository;
     private final DeltaTableRepository tableRepository;
     private final FileStorageService fileStorageService;
+    private final PaginationService paginationService;
     
     /**
      * List all shares
@@ -44,13 +45,17 @@ public class DeltaSharingService {
         
         List<DeltaShare> shares = shareRepository.findByActiveTrue();
         
-        List<ShareResponse> items = shares.stream()
+        List<ShareResponse> allItems = shares.stream()
                 .map(this::convertToShareResponse)
                 .collect(Collectors.toList());
         
+        // Apply pagination
+        PaginationService.PaginatedResult<ShareResponse> paginatedResult = 
+                paginationService.paginate(allItems, maxResults, pageToken);
+        
         return ListSharesResponse.builder()
-                .items(items)
-                .nextPageToken(null) // Pagination not implemented yet
+                .items(paginatedResult.getItems())
+                .nextPageToken(paginatedResult.getNextPageToken())
                 .build();
     }
     
@@ -82,13 +87,17 @@ public class DeltaSharingService {
         
         List<DeltaSchema> schemas = schemaRepository.findByShareName(shareName);
         
-        List<SchemaResponse> items = schemas.stream()
+        List<SchemaResponse> allItems = schemas.stream()
                 .map(schema -> convertToSchemaResponse(schema, shareName))
                 .collect(Collectors.toList());
         
+        // Apply pagination
+        PaginationService.PaginatedResult<SchemaResponse> paginatedResult = 
+                paginationService.paginate(allItems, maxResults, pageToken);
+        
         return ListSchemasResponse.builder()
-                .items(items)
-                .nextPageToken(null)
+                .items(paginatedResult.getItems())
+                .nextPageToken(paginatedResult.getNextPageToken())
                 .build();
     }
     
@@ -110,13 +119,17 @@ public class DeltaSharingService {
         
         List<DeltaTable> tables = tableRepository.findBySchemaNameAndShareName(schemaName, shareName);
         
-        List<TableResponse> items = tables.stream()
+        List<TableResponse> allItems = tables.stream()
                 .map(table -> convertToTableResponse(table, schemaName, shareName))
                 .collect(Collectors.toList());
         
+        // Apply pagination
+        PaginationService.PaginatedResult<TableResponse> paginatedResult = 
+                paginationService.paginate(allItems, maxResults, pageToken);
+        
         return ListTablesResponse.builder()
-                .items(items)
-                .nextPageToken(null)
+                .items(paginatedResult.getItems())
+                .nextPageToken(paginatedResult.getNextPageToken())
                 .build();
     }
     
@@ -132,16 +145,20 @@ public class DeltaSharingService {
         
         List<DeltaTable> tables = tableRepository.findByShareName(shareName);
         
-        List<TableResponse> items = tables.stream()
+        List<TableResponse> allItems = tables.stream()
                 .map(table -> convertToTableResponse(
                         table, 
                         table.getSchema().getName(), 
                         shareName))
                 .collect(Collectors.toList());
         
+        // Apply pagination
+        PaginationService.PaginatedResult<TableResponse> paginatedResult = 
+                paginationService.paginate(allItems, maxResults, pageToken);
+        
         return ListTablesResponse.builder()
-                .items(items)
-                .nextPageToken(null)
+                .items(paginatedResult.getItems())
+                .nextPageToken(paginatedResult.getNextPageToken())
                 .build();
     }
     
@@ -193,6 +210,33 @@ public class DeltaSharingService {
         response.append(metadataJson).append("\n");
         
         return response.toString();
+    }
+    
+    /**
+     * Query table version
+     * Endpoint: GET /shares/{share}/schemas/{schema}/tables/{table}/version
+     */
+    @Transactional(readOnly = true)
+    public Long queryTableVersion(String shareName, String schemaName, String tableName) {
+        log.debug("Querying version for table: {}.{}.{}", shareName, schemaName, tableName);
+        
+        verifyShareIsActive(shareName);
+        
+        DeltaTable table = tableRepository.findByNameAndSchemaNameAndShareName(
+                tableName, schemaName, shareName)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Table not found: " + tableName + " in schema: " + schemaName + 
+                        " in share: " + shareName));
+        
+        // Get current version from file storage service
+        if (fileStorageService instanceof com.databricks.deltasharing.service.storage.MinIOFileStorageService) {
+            com.databricks.deltasharing.service.storage.MinIOFileStorageService minioService = 
+                (com.databricks.deltasharing.service.storage.MinIOFileStorageService) fileStorageService;
+            return minioService.getTableVersion(table.getName());
+        }
+        
+        // Default to version 0 for other storage services
+        return 0L;
     }
     
     /**
@@ -268,6 +312,75 @@ public class DeltaSharingService {
         }
         
         log.info("Returning {} files for table: {}.{}.{}", files.size(), shareName, schemaName, tableName);
+        
+        return response.toString();
+    }
+    
+    /**
+     * Query table changes (CDF - Change Data Feed)
+     * Endpoint: GET /shares/{share}/schemas/{schema}/tables/{table}/changes
+     */
+    @Transactional(readOnly = true)
+    public String queryTableChanges(String shareName, String schemaName, String tableName,
+                                     Long startingVersion, Long endingVersion) {
+        log.debug("Querying changes for table: {}.{}.{} from version {} to {}", 
+                  shareName, schemaName, tableName, startingVersion, endingVersion);
+        
+        verifyShareIsActive(shareName);
+        
+        DeltaTable table = tableRepository.findByNameAndSchemaNameAndShareName(
+                tableName, schemaName, shareName)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Table not found: " + tableName + " in schema: " + schemaName + 
+                        " in share: " + shareName));
+        
+        // Check if storage service supports CDF
+        if (!(fileStorageService instanceof com.databricks.deltasharing.service.storage.MinIOFileStorageService)) {
+            log.warn("CDF not supported for storage type: {}", fileStorageService.getStorageType());
+            return "";
+        }
+        
+        com.databricks.deltasharing.service.storage.MinIOFileStorageService minioService = 
+            (com.databricks.deltasharing.service.storage.MinIOFileStorageService) fileStorageService;
+        
+        // Get changes from storage service
+        List<FileResponse> changes = minioService.getTableChanges(table, startingVersion, endingVersion);
+        
+        // Return newline-delimited JSON (NDJSON) format
+        StringBuilder response = new StringBuilder();
+        
+        // Protocol line
+        ProtocolResponse protocol = ProtocolResponse.builder()
+                .minReaderVersion(1)
+                .minWriterVersion(1)
+                .build();
+        String protocolJson = String.format("{\"protocol\":%s}", toJson(protocol));
+        response.append(protocolJson).append("\n");
+        
+        // Metadata line
+        String schemaString = fileStorageService.getTableSchema(table.getName(), table.getFormat());
+        String[] partCols = fileStorageService.getPartitionColumns(table.getName());
+        List<String> partitionColumns = Arrays.asList(partCols);
+        
+        MetadataResponse metadata = MetadataResponse.builder()
+                .id(table.getId().toString())
+                .name(table.getName())
+                .format(FormatResponse.builder()
+                        .provider(table.getFormat())
+                        .build())
+                .schemaString(schemaString)
+                .partitionColumns(partitionColumns)
+                .build();
+        String metadataJson = String.format("{\"metaData\":%s}", toJson(metadata));
+        response.append(metadataJson).append("\n");
+        
+        // Add change entries
+        for (FileResponse change : changes) {
+            String changeJson = String.format("{\"file\":%s}", toJson(change));
+            response.append(changeJson).append("\n");
+        }
+        
+        log.info("Returning {} changes for table: {}.{}.{}", changes.size(), shareName, schemaName, tableName);
         
         return response.toString();
     }
