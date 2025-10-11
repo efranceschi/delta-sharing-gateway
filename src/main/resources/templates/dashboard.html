@@ -59,7 +59,125 @@
                         </div>
                     </div>
                 </div>
+                
+                <!-- System Status Panel -->
+                <div style="padding: 0 24px 24px 24px;">
+                    <div style="background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 20px;">
+                        <h3 style="margin: 0 0 16px 0; font-size: 18px; font-weight: 600; color: #1F2937;">
+                            <i class="fas fa-heartbeat" style="margin-right: 8px; color: #EF4444;"></i>
+                            System Status
+                        </h3>
+                        
+                        <!-- MinIO Status -->
+                        <div id="minio-status-container" style="display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: #F9FAFB; border-radius: 6px; border-left: 4px solid #9CA3AF;">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <div id="minio-status-icon" style="width: 12px; height: 12px; border-radius: 50%; background: #9CA3AF;"></div>
+                                <div>
+                                    <div style="font-weight: 600; color: #1F2937; font-size: 14px;">MinIO Storage</div>
+                                    <div id="minio-status-text" style="font-size: 12px; color: #6B7280; margin-top: 2px;">Checking status...</div>
+                                </div>
+                            </div>
+                            <div id="minio-status-badge" style="padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; background: #F3F4F6; color: #6B7280;">
+                                <i class="fas fa-spinner fa-spin"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
+            
+            <!-- Status Check Script -->
+            <script th:inline="javascript">
+            (function() {
+                // Check MinIO status
+                function checkMinioStatus() {
+                    fetch('/api/health/minio')
+                        .then(response => response.json())
+                        .then(data => {
+                            updateMinioStatus(data);
+                        })
+                        .catch(error => {
+                            console.error('Error checking MinIO status:', error);
+                            updateMinioStatus({
+                                status: 'error',
+                                message: 'Failed to check status'
+                            });
+                        });
+                }
+                
+                function updateMinioStatus(data) {
+                    const container = document.getElementById('minio-status-container');
+                    const icon = document.getElementById('minio-status-icon');
+                    const text = document.getElementById('minio-status-text');
+                    const badge = document.getElementById('minio-status-badge');
+                    
+                    // Status colors and styles
+                    const statusConfig = {
+                        'healthy': {
+                            color: '#10B981',
+                            borderColor: '#10B981',
+                            bgColor: '#ECFDF5',
+                            badgeText: 'Healthy',
+                            badgeBg: '#D1FAE5',
+                            badgeColor: '#065F46',
+                            icon: 'fa-check-circle'
+                        },
+                        'unhealthy': {
+                            color: '#EF4444',
+                            borderColor: '#EF4444',
+                            bgColor: '#FEF2F2',
+                            badgeText: 'Unhealthy',
+                            badgeBg: '#FEE2E2',
+                            badgeColor: '#991B1B',
+                            icon: 'fa-exclamation-circle'
+                        },
+                        'unavailable': {
+                            color: '#F59E0B',
+                            borderColor: '#F59E0B',
+                            bgColor: '#FFFBEB',
+                            badgeText: 'Unavailable',
+                            badgeBg: '#FEF3C7',
+                            badgeColor: '#92400E',
+                            icon: 'fa-minus-circle'
+                        },
+                        'disabled': {
+                            color: '#6B7280',
+                            borderColor: '#9CA3AF',
+                            bgColor: '#F9FAFB',
+                            badgeText: 'Disabled',
+                            badgeBg: '#F3F4F6',
+                            badgeColor: '#374151',
+                            icon: 'fa-power-off'
+                        },
+                        'error': {
+                            color: '#DC2626',
+                            borderColor: '#DC2626',
+                            bgColor: '#FEF2F2',
+                            badgeText: 'Error',
+                            badgeBg: '#FEE2E2',
+                            badgeColor: '#7F1D1D',
+                            icon: 'fa-times-circle'
+                        }
+                    };
+                    
+                    const config = statusConfig[data.status] || statusConfig['error'];
+                    
+                    // Update visual elements
+                    icon.style.background = config.color;
+                    container.style.background = config.bgColor;
+                    container.style.borderLeftColor = config.borderColor;
+                    text.textContent = data.message || 'Unknown status';
+                    badge.innerHTML = '<i class="fas ' + config.icon + '"></i> ' + config.badgeText;
+                    badge.style.background = config.badgeBg;
+                    badge.style.color = config.badgeColor;
+                }
+                
+                // Check status on load
+                checkMinioStatus();
+                
+                // Refresh every 60 seconds (matches cache TTL)
+                setInterval(checkMinioStatus, 60000);
+            })();
+            </script>
         </th:block>
     </th:block>
 </body>

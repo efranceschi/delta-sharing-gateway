@@ -17,6 +17,7 @@ import java.util.concurrent.TimeUnit;
  * Provides high-performance caching for frequently accessed data:
  * - Table schemas: Cached to avoid repeated Delta Log reads
  * - Partition columns: Cached for quick metadata retrieval
+ * - Health checks: Cached to avoid excessive external service calls
  * 
  * Uses Caffeine cache with configurable TTL and maximum size.
  */
@@ -35,8 +36,9 @@ public class CacheConfig {
      * Cache Manager bean with Caffeine implementation
      * 
      * Cache Names:
-     * - "tableSchemas": Caches table schema JSON strings
-     * - "partitionColumns": Caches partition column arrays
+     * - "tableSchemas": Caches table schema JSON strings (TTL: configured minutes)
+     * - "partitionColumns": Caches partition column arrays (TTL: configured minutes)
+     * - "minioHealthCheck": Caches MinIO health check results (TTL: 60 seconds)
      * 
      * @return Configured CacheManager
      */
@@ -45,13 +47,27 @@ public class CacheConfig {
         log.info("Initializing Cache Manager:");
         log.info("  - Schema Cache TTL: {} minutes", schemaCacheTtlMinutes);
         log.info("  - Schema Cache Max Size: {} entries", schemaCacheMaxSize);
+        log.info("  - Health Check Cache TTL: 60 seconds");
         
-        CaffeineCacheManager cacheManager = new CaffeineCacheManager("tableSchemas", "partitionColumns");
+        CaffeineCacheManager cacheManager = new CaffeineCacheManager(
+                "tableSchemas", 
+                "partitionColumns", 
+                "minioHealthCheck"
+        );
         
         cacheManager.setCaffeine(Caffeine.newBuilder()
                 .expireAfterWrite(schemaCacheTtlMinutes, TimeUnit.MINUTES)
                 .maximumSize(schemaCacheMaxSize)
                 .recordStats() // Enable statistics for monitoring
+        );
+        
+        // Configure a separate cache for health checks with shorter TTL
+        cacheManager.registerCustomCache("minioHealthCheck", 
+                Caffeine.newBuilder()
+                        .expireAfterWrite(60, TimeUnit.SECONDS)
+                        .maximumSize(1)
+                        .recordStats()
+                        .build()
         );
         
         log.info("Cache Manager initialized successfully");
