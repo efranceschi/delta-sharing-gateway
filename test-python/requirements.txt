@@ -8,5 +8,5 @@ pyarrow>=12.0.0
 # HTTP requests (for direct API testing)
 requests>=2.31.0
 
-# Pretty printing
-tabulate>=0.9.0
+# Argument parsing
+argparse>=1.0.0
