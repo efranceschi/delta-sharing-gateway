@@ -60,7 +60,38 @@ public class MinIOFileStorageService implements FileStorageService {
     private boolean enabled = true;
     private boolean useDeltaLog = true; // Use Delta transaction log by default
     
-    private MinioClient minioClient;
+    // Admin credentials configuration (optional)
+    private Admin admin = new Admin();
+    
+    private MinioClient minioClient;  // Regular client for data access
+    private MinioClient adminClient;   // Admin client for cluster metrics (optional)
+    
+    /**
+     * Inner class for admin credentials configuration
+     */
+    @Setter
+    public static class Admin {
+        private boolean enabled = false;
+        private String accessKey;
+        private String secretKey;
+        
+        public boolean isEnabled() {
+            return enabled;
+        }
+        
+        public String getAccessKey() {
+            return accessKey;
+        }
+        
+        public String getSecretKey() {
+            return secretKey;
+        }
+        
+        public boolean isConfigured() {
+            return enabled && accessKey != null && !accessKey.isEmpty() 
+                   && secretKey != null && !secretKey.isEmpty();
+        }
+    }
     
     /**
      * Helper class to hold parsed S3 location information
@@ -105,12 +136,25 @@ public class MinIOFileStorageService implements FileStorageService {
         }
         
         try {
+            // Initialize regular client for data access
             minioClient = MinioClient.builder()
                     .endpoint(endpoint)
                     .credentials(accessKey, secretKey)
                     .build();
             
             log.info("MinIO client initialized successfully for endpoint: {}", endpoint);
+            
+            // Initialize admin client if configured
+            if (admin.isConfigured()) {
+                adminClient = MinioClient.builder()
+                        .endpoint(endpoint)
+                        .credentials(admin.getAccessKey(), admin.getSecretKey())
+                        .build();
+                
+                log.info("MinIO admin client initialized successfully for endpoint: {}", endpoint);
+            } else {
+                log.info("MinIO admin client not configured - cluster metrics will not be available");
+            }
         } catch (Exception e) {
             log.error("Failed to initialize MinIO client", e);
         }
@@ -321,8 +365,17 @@ public class MinIOFileStorageService implements FileStorageService {
     }
     
     /**
+     * Check if admin client is available
+     * 
+     * @return true if admin client is configured and initialized
+     */
+    public boolean isAdminAvailable() {
+        return admin.isConfigured() && adminClient != null;
+    }
+    
+    /**
      * Get basic MinIO cluster information
-     * Used for health monitoring
+     * Uses regular client for basic info, admin client for detailed metrics if available
      * 
      * @return Map with cluster information
      */
@@ -331,6 +384,7 @@ public class MinIOFileStorageService implements FileStorageService {
         
         if (!isAvailable()) {
             info.put("available", false);
+            info.put("adminEnabled", false);
             return info;
         }
         
@@ -340,9 +394,20 @@ public class MinIOFileStorageService implements FileStorageService {
             info.put("available", true);
             info.put("bucketCount", buckets.size());
             info.put("endpoint", endpoint);
+            info.put("adminEnabled", isAdminAvailable());
             
-            // Note: More detailed cluster metrics would require MinIO Admin API
-            // which needs additional dependencies and admin credentials
+            // If admin client is available, try to get detailed metrics
+            if (isAdminAvailable()) {
+                try {
+                    Map<String, Object> adminInfo = getAdminClusterInfo();
+                    info.put("adminInfo", adminInfo);
+                } catch (Exception e) {
+                    log.warn("Failed to get admin cluster info: {}", e.getMessage());
+                    info.put("adminError", "Failed to retrieve admin metrics: " + e.getMessage());
+                }
+            } else {
+                info.put("note", "Admin credentials not configured - detailed metrics unavailable");
+            }
             
         } catch (Exception e) {
             log.warn("Failed to get MinIO cluster info: {}", e.getMessage());
@@ -351,6 +416,51 @@ public class MinIOFileStorageService implements FileStorageService {
         }
         
         return info;
+    }
+    
+    /**
+     * Get detailed cluster information using admin credentials
+     * Note: This requires MinIO Admin API which needs additional setup
+     * 
+     * @return Map with detailed admin cluster information
+     */
+    private Map<String, Object> getAdminClusterInfo() {
+        Map<String, Object> adminInfo = new HashMap<>();
+        
+        if (!isAdminAvailable()) {
+            adminInfo.put("available", false);
+            adminInfo.put("message", "Admin client not available");
+            return adminInfo;
+        }
+        
+        try {
+            // Try to list buckets with admin client to verify permissions
+            var buckets = adminClient.listBuckets();
+            adminInfo.put("available", true);
+            adminInfo.put("bucketsAccessible", buckets.size());
+            
+            // For detailed cluster metrics (storage, memory, nodes, etc.),
+            // we would need to use MinioAdminClient from io.minio:minio-admin
+            // which requires additional dependencies:
+            // <dependency>
+            //     <groupId>io.minio</groupId>
+            //     <artifactId>minio-admin</artifactId>
+            // </dependency>
+            //
+            // Example usage with MinioAdminClient:
+            // - ServerInfo info = adminClient.serverInfo()
+            // - StorageInfo storage = adminClient.storageInfo()
+            // - etc.
+            
+            adminInfo.put("note", "Full admin metrics require MinIO Admin API library (io.minio:minio-admin)");
+            
+        } catch (Exception e) {
+            log.warn("Failed to get admin cluster info: {}", e.getMessage());
+            adminInfo.put("available", false);
+            adminInfo.put("error", e.getMessage());
+        }
+        
+        return adminInfo;
     }
     
     private boolean isConfigured() {

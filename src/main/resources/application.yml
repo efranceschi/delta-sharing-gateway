@@ -202,12 +202,19 @@ delta:
       minio:
         enabled: true
         endpoint: ${DELTA_SHARING_STORAGE_MINIO_ENDPOINT:https://minio.your-domain.com}
+        # Regular user credentials for data access (read-only recommended)
         access-key: ${DELTA_SHARING_STORAGE_MINIO_ACCESS_KEY:}
         secret-key: ${DELTA_SHARING_STORAGE_MINIO_SECRET_KEY:}
         bucket: ${DELTA_SHARING_STORAGE_MINIO_BUCKET:delta-sharing}
         url-expiration-minutes: ${DELTA_SHARING_STORAGE_MINIO_URL_EXPIRATION_MINUTES:60}
         # Use HTTPS for MinIO in production
         use-ssl: true
+        # Admin credentials for cluster metrics and health monitoring (optional)
+        # If not provided, detailed cluster metrics will not be available
+        admin:
+          enabled: ${DELTA_SHARING_STORAGE_MINIO_ADMIN_ENABLED:false}
+          access-key: ${DELTA_SHARING_STORAGE_MINIO_ADMIN_ACCESS_KEY:}
+          secret-key: ${DELTA_SHARING_STORAGE_MINIO_ADMIN_SECRET_KEY:}
       
       # HTTP Storage Configuration (for local filesystem Delta tables)
       http:
