@@ -89,6 +89,9 @@ public class MinIOFileStorageService implements FileStorageService {
     @Autowired(required = false)
     private ParquetSchemaReader parquetSchemaReader;
     
+    @Autowired(required = false)
+    private com.databricks.deltasharing.repository.DeltaTableRepository tableRepository;
+    
     @PostConstruct
     public void init() {
         if (!enabled) {
@@ -649,25 +652,65 @@ public class MinIOFileStorageService implements FileStorageService {
     
     /**
      * Parse S3 location from table name
-     * Assumes tableName is the full location path in format: s3://bucket/path/to/table
-     * If tableName doesn't contain s3://, treats it as a simple table name and uses default bucket
+     * 
+     * Strategy:
+     * 1. If tableName is a full S3 location (starts with s3://), parse it directly
+     * 2. Otherwise, try to find the table in the repository and use its location field
+     * 3. If not found, throw an exception
      * 
      * @param tableName Table name or full S3 location
      * @return S3Location with bucket and path
+     * @throws IllegalArgumentException if table cannot be found or has no location
      */
     private S3Location parseS3LocationFromTableName(String tableName) {
         if (tableName == null || tableName.isEmpty()) {
             throw new IllegalArgumentException("Table name cannot be null or empty");
         }
         
-        // Check if tableName is actually a full S3 location
+        // Strategy 1: Check if tableName is actually a full S3 location
         if (tableName.startsWith("s3://")) {
             return parseS3Location(tableName);
         }
         
-        // If not an S3 location, we need to construct one
-        // This requires the table to have a proper location configured
+        // Strategy 2: Try to find the table in the repository by name
+        if (tableRepository != null) {
+            try {
+                log.debug("Looking up table '{}' in repository to get its location", tableName);
+                
+                // Find all tables with this name (there might be multiple in different schemas/shares)
+                java.util.List<DeltaTable> tables = tableRepository.findAll().stream()
+                        .filter(t -> tableName.equals(t.getName()))
+                        .collect(java.util.stream.Collectors.toList());
+                
+                if (!tables.isEmpty()) {
+                    DeltaTable table = tables.get(0);
+                    
+                    if (tables.size() > 1) {
+                        log.warn("Found {} tables with name '{}', using first one: {}", 
+                                tables.size(), tableName, table.getLocation());
+                    }
+                    
+                    String location = table.getLocation();
+                    if (location != null && !location.isEmpty()) {
+                        log.debug("Found table location in repository: {}", location);
+                        return parseS3Location(location);
+                    } else {
+                        throw new IllegalArgumentException(
+                            "Table '" + tableName + "' found in repository but has no location configured");
+                    }
+                } else {
+                    log.warn("Table '{}' not found in repository", tableName);
+                }
+            } catch (Exception e) {
+                log.warn("Error looking up table '{}' in repository: {}", tableName, e.getMessage());
+            }
+        } else {
+            log.warn("DeltaTableRepository not available, cannot lookup table location for: {}", tableName);
+        }
+        
+        // Strategy 3: If we reach here, we couldn't resolve the location
         throw new IllegalArgumentException(
-            "Table name must be a full S3 location (s3://bucket/path) but got: " + tableName);
+            "Cannot resolve S3 location for table '" + tableName + "'. " +
+            "Please ensure the table exists in the database with a valid location field (s3://bucket/path)");
     }
 }
