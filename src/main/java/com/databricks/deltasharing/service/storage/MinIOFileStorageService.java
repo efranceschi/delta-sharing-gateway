@@ -405,38 +405,51 @@ public class MinIOFileStorageService implements FileStorageService {
                     .prefix(deltaLogPath)
                     .recursive(false)
                     .build();
-            
+
+            log.debug("Listing objects in bucket '{}' with prefix '{}'", bucket, deltaLogPath);
+
+            int fileCount = 0;
             for (io.minio.Result<io.minio.messages.Item> result : minioClient.listObjects(listArgs)) {
                 io.minio.messages.Item item = result.get();
                 String objectName = item.objectName();
-                
+
+                log.debug("Found object: {}", objectName);
+
                 // Extract filename from full path
                 String filename = objectName.substring(deltaLogPath.length());
-                
+
+                log.debug("Extracted filename: {}", filename);
+
                 // Check if it's a version file (e.g., 00000000000000000000.json)
                 if (filename.matches("\\d{20}\\.json")) {
                     try {
                         Long version = Long.parseLong(filename.substring(0, 20));
+                        log.debug("Extracted version {} from filename {}", version, filename);
                         if (maxVersion == null || version > maxVersion) {
+                            log.debug("Updating maxVersion: previous={}, new={}", maxVersion, version);
                             maxVersion = version;
                         }
                     } catch (NumberFormatException e) {
                         log.warn("Failed to parse version from filename: {}", filename);
                     }
+                } else {
+                    log.debug("Filename '{}' does not match version file pattern", filename);
                 }
+                fileCount++;
             }
-            
+
+            log.debug("Processed {} files in delta log directory '{}'", fileCount, deltaLogPath);
             if (maxVersion != null) {
                 log.info("Found latest version from file listing: {} in {}/{}", maxVersion, bucket, deltaLogPath);
                 return maxVersion;
             }
             
-            // Strategy 3: Default to version 0
-            log.warn("No Delta log files found in {}/{}, defaulting to version 0", bucket, deltaLogPath);
+            // Strategy 3: Default to version 0 (may be Parquet table without Delta Log)
+            log.debug("No Delta log files found in {}/{} (may be Parquet table), defaulting to version 0", bucket, deltaLogPath);
             return 0L;
             
         } catch (Exception e) {
-            log.error("Error finding latest version in {}/{}, defaulting to version 0: {}", 
+            log.debug("Could not find Delta log version in {}/{} (may be Parquet table): {}", 
                     bucket, deltaLogPath, e.getMessage());
             return 0L;
         }
@@ -470,8 +483,18 @@ public class MinIOFileStorageService implements FileStorageService {
     
     /**
      * Read schema from Delta table (via Delta Log)
+     * 
+     * For non-Delta tables, falls back to Parquet schema reading
      */
     private String readDeltaTableSchema(String tableName) {
+        // Check if this is actually a Delta table
+        DeltaTable tableEntity = findTableByName(tableName);
+        if (tableEntity != null && !"delta".equalsIgnoreCase(tableEntity.getFormat())) {
+            log.info("Table {} is format '{}', not Delta. Using Parquet schema reader.", 
+                    tableName, tableEntity.getFormat());
+            return readParquetTableSchema(tableName);
+        }
+        
         if (deltaLogReader == null) {
             log.warn("DeltaLogReader not available, cannot read Delta schema");
             throw new IllegalStateException("DeltaLogReader is required for Delta tables");
@@ -484,6 +507,13 @@ public class MinIOFileStorageService implements FileStorageService {
             
             // Find the latest version
             Long targetVersion = findLatestVersion(s3Location.bucket, deltaLogPath);
+            
+            // If no version found, table may not be Delta format
+            if (targetVersion == 0L) {
+                log.info("No Delta log found for table: {}. Falling back to Parquet schema.", tableName);
+                return readParquetTableSchema(tableName);
+            }
+            
             String logFileName = String.format("%020d.json", targetVersion);
             String logObjectName = deltaLogPath + logFileName;
             
@@ -509,8 +539,10 @@ public class MinIOFileStorageService implements FileStorageService {
             }
             
         } catch (Exception e) {
-            log.error("Failed to read schema from Delta log in MinIO for table: {}", tableName, e);
-            throw new RuntimeException("Failed to read schema from Delta log: " + e.getMessage(), e);
+            log.warn("Failed to read schema from Delta log for table: {}. Trying Parquet fallback: {}", 
+                    tableName, e.getMessage());
+            // Fallback to Parquet schema if Delta log read fails
+            return readParquetTableSchema(tableName);
         }
     }
     
@@ -595,11 +627,21 @@ public class MinIOFileStorageService implements FileStorageService {
      * Get partition columns from Delta log metadata
      * For MinIO, we read partition info from the Delta transaction log stored in MinIO
      * Cached to avoid repeated MinIO reads and Delta log parsing
+     * 
+     * For Parquet tables without Delta Log, returns empty array
      */
     @Override
     @Cacheable(value = "partitionColumns", key = "#tableName")
     public String[] getPartitionColumns(String tableName) {
         log.debug("Reading (uncached) partition columns for table: {} from Delta log in MinIO", tableName);
+        
+        // Check if this is a Delta table by looking up in repository
+        DeltaTable tableEntity = findTableByName(tableName);
+        if (tableEntity != null && !"delta".equalsIgnoreCase(tableEntity.getFormat())) {
+            log.debug("Table {} is format '{}', not Delta. Partition columns not available.", 
+                    tableName, tableEntity.getFormat());
+            return new String[0];
+        }
         
         if (deltaLogReader == null) {
             log.warn("DeltaLogReader not available, cannot read partition columns");
@@ -618,6 +660,13 @@ public class MinIOFileStorageService implements FileStorageService {
             
             // Find the latest version
             Long targetVersion = findLatestVersion(s3Location.bucket, deltaLogPath);
+            
+            // If no version found, likely not a Delta table
+            if (targetVersion == 0L) {
+                log.debug("No Delta log version found for table: {}. May not be a Delta table.", tableName);
+                return new String[0];
+            }
+            
             String logFileName = String.format("%020d.json", targetVersion);
             String logObjectName = deltaLogPath + logFileName;
             
@@ -645,9 +694,40 @@ public class MinIOFileStorageService implements FileStorageService {
             }
             
         } catch (Exception e) {
-            log.warn("Failed to read partition columns from Delta log in MinIO for table: {}", tableName, e);
+            log.debug("Could not read partition columns from Delta log for table: {} (may be Parquet table): {}", 
+                    tableName, e.getMessage());
             return new String[0];
         }
+    }
+    
+    /**
+     * Helper method to find a table by name in the repository
+     * 
+     * @param tableName Table name to search for
+     * @return DeltaTable entity or null if not found
+     */
+    private DeltaTable findTableByName(String tableName) {
+        if (tableRepository == null) {
+            return null;
+        }
+        
+        try {
+            // Find all tables with this name (there might be multiple in different schemas/shares)
+            java.util.List<DeltaTable> tables = tableRepository.findAll().stream()
+                    .filter(t -> tableName.equals(t.getName()))
+                    .collect(java.util.stream.Collectors.toList());
+            
+            if (!tables.isEmpty()) {
+                if (tables.size() > 1) {
+                    log.debug("Found {} tables with name '{}', using first one", tables.size(), tableName);
+                }
+                return tables.get(0);
+            }
+        } catch (Exception e) {
+            log.debug("Error looking up table '{}' in repository: {}", tableName, e.getMessage());
+        }
+        
+        return null;
     }
     
     /**
@@ -673,40 +753,19 @@ public class MinIOFileStorageService implements FileStorageService {
         }
         
         // Strategy 2: Try to find the table in the repository by name
-        if (tableRepository != null) {
-            try {
-                log.debug("Looking up table '{}' in repository to get its location", tableName);
-                
-                // Find all tables with this name (there might be multiple in different schemas/shares)
-                java.util.List<DeltaTable> tables = tableRepository.findAll().stream()
-                        .filter(t -> tableName.equals(t.getName()))
-                        .collect(java.util.stream.Collectors.toList());
-                
-                if (!tables.isEmpty()) {
-                    DeltaTable table = tables.get(0);
-                    
-                    if (tables.size() > 1) {
-                        log.warn("Found {} tables with name '{}', using first one: {}", 
-                                tables.size(), tableName, table.getLocation());
-                    }
-                    
-                    String location = table.getLocation();
-                    if (location != null && !location.isEmpty()) {
-                        log.debug("Found table location in repository: {}", location);
-                        return parseS3Location(location);
-                    } else {
-                        throw new IllegalArgumentException(
-                            "Table '" + tableName + "' found in repository but has no location configured");
-                    }
-                } else {
-                    log.warn("Table '{}' not found in repository", tableName);
-                }
-            } catch (Exception e) {
-                log.warn("Error looking up table '{}' in repository: {}", tableName, e.getMessage());
+        DeltaTable table = findTableByName(tableName);
+        if (table != null) {
+            String location = table.getLocation();
+            if (location != null && !location.isEmpty()) {
+                log.debug("Found table location in repository: {}", location);
+                return parseS3Location(location);
+            } else {
+                throw new IllegalArgumentException(
+                    "Table '" + tableName + "' found in repository but has no location configured");
             }
-        } else {
-            log.warn("DeltaTableRepository not available, cannot lookup table location for: {}", tableName);
         }
+        
+        log.warn("Table '{}' not found in repository", tableName);
         
         // Strategy 3: If we reach here, we couldn't resolve the location
         throw new IllegalArgumentException(
