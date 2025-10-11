@@ -63,24 +63,92 @@
                 <!-- System Status Panel -->
                 <div style="padding: 0 24px 24px 24px;">
                     <div style="background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 20px;">
-                        <h3 style="margin: 0 0 16px 0; font-size: 18px; font-weight: 600; color: #1F2937;">
+                        <h3 style="margin: 0 0 20px 0; font-size: 18px; font-weight: 600; color: #1F2937;">
                             <i class="fas fa-heartbeat" style="margin-right: 8px; color: #EF4444;"></i>
                             System Status
                         </h3>
                         
-                        <!-- MinIO Status -->
-                        <div id="minio-status-container" style="display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: #F9FAFB; border-radius: 6px; border-left: 4px solid #9CA3AF;">
-                            <div style="display: flex; align-items: center; gap: 12px;">
-                                <div id="minio-status-icon" style="width: 12px; height: 12px; border-radius: 50%; background: #9CA3AF;"></div>
+                        <!-- Services Grid -->
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px;">
+                            
+                            <!-- Database Status -->
+                            <div id="database-status-container" class="status-item" style="padding: 12px 16px; background: #F9FAFB; border-radius: 6px; border-left: 4px solid #9CA3AF;">
+                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                                    <div style="display: flex; align-items: center; gap: 12px;">
+                                        <div id="database-status-icon" style="width: 12px; height: 12px; border-radius: 50%; background: #9CA3AF;"></div>
+                                        <div style="font-weight: 600; color: #1F2937; font-size: 14px;">Database</div>
+                                    </div>
+                                    <div id="database-status-badge" style="padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; background: #F3F4F6; color: #6B7280;">
+                                        <i class="fas fa-spinner fa-spin"></i>
+                                    </div>
+                                </div>
+                                <div id="database-status-text" style="font-size: 12px; color: #6B7280;">Checking...</div>
+                            </div>
+                            
+                            <!-- MinIO Storage Status -->
+                            <div id="minio-status-container" class="status-item" style="padding: 12px 16px; background: #F9FAFB; border-radius: 6px; border-left: 4px solid #9CA3AF;">
+                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                                    <div style="display: flex; align-items: center; gap: 12px;">
+                                        <div id="minio-status-icon" style="width: 12px; height: 12px; border-radius: 50%; background: #9CA3AF;"></div>
+                                        <div style="font-weight: 600; color: #1F2937; font-size: 14px;">MinIO Storage</div>
+                                    </div>
+                                    <div id="minio-status-badge" style="padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; background: #F3F4F6; color: #6B7280;">
+                                        <i class="fas fa-spinner fa-spin"></i>
+                                    </div>
+                                </div>
+                                <div id="minio-status-text" style="font-size: 12px; color: #6B7280;">Checking...</div>
+                            </div>
+                            
+                        </div>
+                        
+                        <!-- JVM Memory Gauge -->
+                        <div style="margin-top: 20px; padding: 16px; background: #F9FAFB; border-radius: 6px;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
                                 <div>
-                                    <div style="font-weight: 600; color: #1F2937; font-size: 14px;">MinIO Storage</div>
-                                    <div id="minio-status-text" style="font-size: 12px; color: #6B7280; margin-top: 2px;">Checking status...</div>
+                                    <div style="font-weight: 600; color: #1F2937; font-size: 14px;">
+                                        <i class="fas fa-memory" style="margin-right: 8px; color: #8B5CF6;"></i>
+                                        JVM Memory
+                                    </div>
+                                    <div id="jvm-memory-text" style="font-size: 12px; color: #6B7280; margin-top: 4px;">Loading...</div>
+                                </div>
+                                <div id="jvm-status-badge" style="padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; background: #F3F4F6; color: #6B7280;">
+                                    <i class="fas fa-spinner fa-spin"></i>
                                 </div>
                             </div>
-                            <div id="minio-status-badge" style="padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; background: #F3F4F6; color: #6B7280;">
-                                <i class="fas fa-spinner fa-spin"></i>
+                            
+                            <!-- Memory Progress Bar -->
+                            <div style="margin-top: 8px;">
+                                <div style="display: flex; justify-content: space-between; font-size: 11px; color: #6B7280; margin-bottom: 4px;">
+                                    <span id="jvm-used">0 MB</span>
+                                    <span id="jvm-max">0 MB</span>
+                                </div>
+                                <div style="width: 100%; height: 20px; background: #E5E7EB; border-radius: 10px; overflow: hidden; position: relative;">
+                                    <div id="jvm-memory-bar" style="height: 100%; background: linear-gradient(90deg, #10B981, #059669); border-radius: 10px; width: 0%; transition: width 0.5s ease, background 0.5s ease;"></div>
+                                    <div id="jvm-memory-percent" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 11px; font-weight: 600; color: #1F2937;">0%</div>
+                                </div>
                             </div>
                         </div>
+                        
+                        <!-- MinIO Cluster Info -->
+                        <div id="minio-cluster-container" style="margin-top: 20px; padding: 16px; background: #F9FAFB; border-radius: 6px; display: none;">
+                            <div style="font-weight: 600; color: #1F2937; font-size: 14px; margin-bottom: 12px;">
+                                <i class="fas fa-server" style="margin-right: 8px; color: #3B82F6;"></i>
+                                MinIO Cluster Information
+                            </div>
+                            <div id="minio-cluster-info" style="font-size: 12px; color: #6B7280;">
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+                                    <div>
+                                        <div style="color: #9CA3AF; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Buckets</div>
+                                        <div id="minio-buckets" style="font-size: 16px; font-weight: 600; color: #1F2937; margin-top: 4px;">-</div>
+                                    </div>
+                                </div>
+                                <div id="minio-cluster-note" style="margin-top: 12px; padding: 8px; background: #FEF3C7; border-left: 3px solid #F59E0B; border-radius: 4px; font-size: 11px; color: #92400E; display: none;">
+                                    <i class="fas fa-info-circle" style="margin-right: 4px;"></i>
+                                    <span></span>
+                                </div>
+                            </div>
+                        </div>
+                        
                     </div>
                 </div>
             </div>
@@ -88,80 +156,37 @@
             <!-- Status Check Script -->
             <script th:inline="javascript">
             (function() {
-                // Check MinIO status
-                function checkMinioStatus() {
-                    fetch('/api/health/minio')
-                        .then(response => response.json())
-                        .then(data => {
-                            updateMinioStatus(data);
-                        })
-                        .catch(error => {
-                            console.error('Error checking MinIO status:', error);
-                            updateMinioStatus({
-                                status: 'error',
-                                message: 'Failed to check status'
-                            });
-                        });
+                // Status colors configuration
+                const statusConfig = {
+                    'healthy': { color: '#10B981', borderColor: '#10B981', bgColor: '#ECFDF5', badgeText: 'Healthy', badgeBg: '#D1FAE5', badgeColor: '#065F46', icon: 'fa-check-circle' },
+                    'unhealthy': { color: '#EF4444', borderColor: '#EF4444', bgColor: '#FEF2F2', badgeText: 'Unhealthy', badgeBg: '#FEE2E2', badgeColor: '#991B1B', icon: 'fa-exclamation-circle' },
+                    'warning': { color: '#F59E0B', borderColor: '#F59E0B', bgColor: '#FFFBEB', badgeText: 'Warning', badgeBg: '#FEF3C7', badgeColor: '#92400E', icon: 'fa-exclamation-triangle' },
+                    'critical': { color: '#DC2626', borderColor: '#DC2626', bgColor: '#FEF2F2', badgeText: 'Critical', badgeBg: '#FEE2E2', badgeColor: '#7F1D1D', icon: 'fa-exclamation-triangle' },
+                    'unavailable': { color: '#F59E0B', borderColor: '#F59E0B', bgColor: '#FFFBEB', badgeText: 'Unavailable', badgeBg: '#FEF3C7', badgeColor: '#92400E', icon: 'fa-minus-circle' },
+                    'disabled': { color: '#6B7280', borderColor: '#9CA3AF', bgColor: '#F9FAFB', badgeText: 'Disabled', badgeBg: '#F3F4F6', badgeColor: '#374151', icon: 'fa-power-off' },
+                    'error': { color: '#DC2626', borderColor: '#DC2626', bgColor: '#FEF2F2', badgeText: 'Error', badgeBg: '#FEE2E2', badgeColor: '#7F1D1D', icon: 'fa-times-circle' }
+                };
+                
+                // Helper function to format bytes
+                function formatBytes(bytes) {
+                    const mb = bytes / (1024 * 1024);
+                    if (mb >= 1024) {
+                        return (mb / 1024).toFixed(2) + ' GB';
+                    }
+                    return mb.toFixed(0) + ' MB';
                 }
                 
-                function updateMinioStatus(data) {
-                    const container = document.getElementById('minio-status-container');
-                    const icon = document.getElementById('minio-status-icon');
-                    const text = document.getElementById('minio-status-text');
-                    const badge = document.getElementById('minio-status-badge');
+                // Update service status (generic)
+                function updateServiceStatus(serviceId, data) {
+                    const container = document.getElementById(`${serviceId}-status-container`);
+                    const icon = document.getElementById(`${serviceId}-status-icon`);
+                    const text = document.getElementById(`${serviceId}-status-text`);
+                    const badge = document.getElementById(`${serviceId}-status-badge`);
                     
-                    // Status colors and styles
-                    const statusConfig = {
-                        'healthy': {
-                            color: '#10B981',
-                            borderColor: '#10B981',
-                            bgColor: '#ECFDF5',
-                            badgeText: 'Healthy',
-                            badgeBg: '#D1FAE5',
-                            badgeColor: '#065F46',
-                            icon: 'fa-check-circle'
-                        },
-                        'unhealthy': {
-                            color: '#EF4444',
-                            borderColor: '#EF4444',
-                            bgColor: '#FEF2F2',
-                            badgeText: 'Unhealthy',
-                            badgeBg: '#FEE2E2',
-                            badgeColor: '#991B1B',
-                            icon: 'fa-exclamation-circle'
-                        },
-                        'unavailable': {
-                            color: '#F59E0B',
-                            borderColor: '#F59E0B',
-                            bgColor: '#FFFBEB',
-                            badgeText: 'Unavailable',
-                            badgeBg: '#FEF3C7',
-                            badgeColor: '#92400E',
-                            icon: 'fa-minus-circle'
-                        },
-                        'disabled': {
-                            color: '#6B7280',
-                            borderColor: '#9CA3AF',
-                            bgColor: '#F9FAFB',
-                            badgeText: 'Disabled',
-                            badgeBg: '#F3F4F6',
-                            badgeColor: '#374151',
-                            icon: 'fa-power-off'
-                        },
-                        'error': {
-                            color: '#DC2626',
-                            borderColor: '#DC2626',
-                            bgColor: '#FEF2F2',
-                            badgeText: 'Error',
-                            badgeBg: '#FEE2E2',
-                            badgeColor: '#7F1D1D',
-                            icon: 'fa-times-circle'
-                        }
-                    };
+                    if (!container || !icon || !text || !badge) return;
                     
                     const config = statusConfig[data.status] || statusConfig['error'];
                     
-                    // Update visual elements
                     icon.style.background = config.color;
                     container.style.background = config.bgColor;
                     container.style.borderLeftColor = config.borderColor;
@@ -171,11 +196,130 @@
                     badge.style.color = config.badgeColor;
                 }
                 
-                // Check status on load
-                checkMinioStatus();
+                // Check Database status
+                function checkDatabaseStatus() {
+                    fetch('/api/health/database')
+                        .then(response => response.json())
+                        .then(data => {
+                            updateServiceStatus('database', data);
+                            
+                            // Update detailed info
+                            const text = document.getElementById('database-status-text');
+                            if (data.product && data.version) {
+                                text.textContent = `${data.product} ${data.version}`;
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error checking database status:', error);
+                            updateServiceStatus('database', { status: 'error', message: 'Failed to check status' });
+                        });
+                }
                 
-                // Refresh every 60 seconds (matches cache TTL)
-                setInterval(checkMinioStatus, 60000);
+                // Check MinIO status
+                function checkMinioStatus() {
+                    fetch('/api/health/minio')
+                        .then(response => response.json())
+                        .then(data => {
+                            updateServiceStatus('minio', data);
+                        })
+                        .catch(error => {
+                            console.error('Error checking MinIO status:', error);
+                            updateServiceStatus('minio', { status: 'error', message: 'Failed to check status' });
+                        });
+                }
+                
+                // Check JVM Memory
+                function checkJVMMemory() {
+                    fetch('/api/health/jvm')
+                        .then(response => response.json())
+                        .then(data => {
+                            const memory = data.memory;
+                            const usagePercent = memory.maxUsagePercent;
+                            
+                            // Update text
+                            document.getElementById('jvm-memory-text').textContent = 
+                                `${formatBytes(memory.used)} used / ${formatBytes(memory.max)} max (${memory.processors} CPUs)`;
+                            
+                            // Update values
+                            document.getElementById('jvm-used').textContent = formatBytes(memory.used);
+                            document.getElementById('jvm-max').textContent = formatBytes(memory.max);
+                            document.getElementById('jvm-memory-percent').textContent = usagePercent.toFixed(1) + '%';
+                            
+                            // Update progress bar
+                            const bar = document.getElementById('jvm-memory-bar');
+                            bar.style.width = usagePercent + '%';
+                            
+                            // Change color based on usage
+                            if (usagePercent > 90) {
+                                bar.style.background = 'linear-gradient(90deg, #DC2626, #991B1B)';
+                            } else if (usagePercent > 75) {
+                                bar.style.background = 'linear-gradient(90deg, #F59E0B, #D97706)';
+                            } else {
+                                bar.style.background = 'linear-gradient(90deg, #10B981, #059669)';
+                            }
+                            
+                            // Update badge
+                            const badge = document.getElementById('jvm-status-badge');
+                            const config = statusConfig[data.status] || statusConfig['healthy'];
+                            badge.innerHTML = '<i class="fas ' + config.icon + '"></i> ' + config.badgeText;
+                            badge.style.background = config.badgeBg;
+                            badge.style.color = config.badgeColor;
+                        })
+                        .catch(error => {
+                            console.error('Error checking JVM memory:', error);
+                            document.getElementById('jvm-memory-text').textContent = 'Failed to retrieve memory info';
+                        });
+                }
+                
+                // Check MinIO Cluster Info
+                function checkMinIOCluster() {
+                    fetch('/api/health/minio/cluster')
+                        .then(response => response.json())
+                        .then(data => {
+                            const container = document.getElementById('minio-cluster-container');
+                            
+                            if (data.status === 'disabled') {
+                                container.style.display = 'none';
+                                return;
+                            }
+                            
+                            container.style.display = 'block';
+                            
+                            if (data.info && data.info.bucketCount !== undefined) {
+                                document.getElementById('minio-buckets').textContent = data.info.bucketCount;
+                            }
+                            
+                            // Show note if available
+                            if (data.note) {
+                                const noteDiv = document.getElementById('minio-cluster-note');
+                                noteDiv.style.display = 'block';
+                                noteDiv.querySelector('span').textContent = data.note;
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error checking MinIO cluster:', error);
+                        });
+                }
+                
+                // Initialize all checks
+                function checkAllStatus() {
+                    checkDatabaseStatus();
+                    checkMinioStatus();
+                    checkJVMMemory();
+                    checkMinIOCluster();
+                }
+                
+                // Initial check
+                checkAllStatus();
+                
+                // Periodic refresh (60 seconds for most, 10 seconds for JVM)
+                setInterval(function() {
+                    checkDatabaseStatus();
+                    checkMinioStatus();
+                    checkMinIOCluster();
+                }, 60000);
+                
+                setInterval(checkJVMMemory, 10000);
             })();
             </script>
         </th:block>

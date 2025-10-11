@@ -39,6 +39,9 @@ public class CacheConfig {
      * - "tableSchemas": Caches table schema JSON strings (TTL: configured minutes)
      * - "partitionColumns": Caches partition column arrays (TTL: configured minutes)
      * - "minioHealthCheck": Caches MinIO health check results (TTL: 60 seconds)
+     * - "databaseHealthCheck": Caches Database health check results (TTL: 60 seconds)
+     * - "jvmHealthCheck": Caches JVM memory metrics (TTL: 10 seconds)
+     * - "minioClusterHealthCheck": Caches MinIO cluster info (TTL: 60 seconds)
      * 
      * @return Configured CacheManager
      */
@@ -48,11 +51,11 @@ public class CacheConfig {
         log.info("  - Schema Cache TTL: {} minutes", schemaCacheTtlMinutes);
         log.info("  - Schema Cache Max Size: {} entries", schemaCacheMaxSize);
         log.info("  - Health Check Cache TTL: 60 seconds");
+        log.info("  - JVM Cache TTL: 10 seconds");
         
         CaffeineCacheManager cacheManager = new CaffeineCacheManager(
                 "tableSchemas", 
-                "partitionColumns", 
-                "minioHealthCheck"
+                "partitionColumns"
         );
         
         cacheManager.setCaffeine(Caffeine.newBuilder()
@@ -61,10 +64,35 @@ public class CacheConfig {
                 .recordStats() // Enable statistics for monitoring
         );
         
-        // Configure a separate cache for health checks with shorter TTL
+        // Configure health check caches with 60 second TTL
         cacheManager.registerCustomCache("minioHealthCheck", 
                 Caffeine.newBuilder()
                         .expireAfterWrite(60, TimeUnit.SECONDS)
+                        .maximumSize(1)
+                        .recordStats()
+                        .build()
+        );
+        
+        cacheManager.registerCustomCache("databaseHealthCheck", 
+                Caffeine.newBuilder()
+                        .expireAfterWrite(60, TimeUnit.SECONDS)
+                        .maximumSize(1)
+                        .recordStats()
+                        .build()
+        );
+        
+        cacheManager.registerCustomCache("minioClusterHealthCheck", 
+                Caffeine.newBuilder()
+                        .expireAfterWrite(60, TimeUnit.SECONDS)
+                        .maximumSize(1)
+                        .recordStats()
+                        .build()
+        );
+        
+        // Configure JVM cache with shorter TTL (10 seconds)
+        cacheManager.registerCustomCache("jvmHealthCheck", 
+                Caffeine.newBuilder()
+                        .expireAfterWrite(10, TimeUnit.SECONDS)
                         .maximumSize(1)
                         .recordStats()
                         .build()
