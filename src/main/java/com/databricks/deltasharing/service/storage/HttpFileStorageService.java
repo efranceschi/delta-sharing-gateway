@@ -6,6 +6,7 @@ import com.databricks.deltasharing.dto.protocol.FileResponse;
 import com.databricks.deltasharing.model.DeltaTable;
 import com.databricks.deltasharing.service.delta.DataSkippingService;
 import com.databricks.deltasharing.service.delta.DeltaLogReader;
+import com.databricks.deltasharing.service.parquet.ParquetSchemaReader;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,6 +16,7 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -55,6 +57,9 @@ public class HttpFileStorageService implements FileStorageService {
     
     @Autowired(required = false)
     private DataSkippingService dataSkippingService;
+    
+    @Autowired(required = false)
+    private ParquetSchemaReader parquetSchemaReader;
     
     @Override
     public List<FileResponse> getTableFiles(DeltaTable table, Long version, 
@@ -246,11 +251,26 @@ public class HttpFileStorageService implements FileStorageService {
     @Override
     @Cacheable(value = "tableSchemas", key = "#tableName + '_' + #format")
     public String getTableSchema(String tableName, String format) {
-        log.debug("Reading (uncached) schema for table: {} (format: {}) from Delta log", tableName, format);
+        log.debug("Reading (uncached) schema for table: {} (format: {}) from local filesystem", tableName, format);
         
+        // Handle different formats
+        if ("delta".equalsIgnoreCase(format)) {
+            return readDeltaTableSchema(tableName);
+        } else if ("parquet".equalsIgnoreCase(format)) {
+            return readParquetTableSchema(tableName);
+        } else {
+            log.warn("Unsupported table format: {}. Defaulting to Parquet schema.", format);
+            return readParquetTableSchema(tableName);
+        }
+    }
+    
+    /**
+     * Read schema from Delta table (via Delta Log)
+     */
+    private String readDeltaTableSchema(String tableName) {
         if (deltaLogReader == null) {
-            log.warn("DeltaLogReader not available, cannot read schema");
-            throw new IllegalStateException("DeltaLogReader is required for HTTP storage");
+            log.warn("DeltaLogReader not available, cannot read Delta schema");
+            throw new IllegalStateException("DeltaLogReader is required for Delta tables");
         }
         
         try {
@@ -272,6 +292,76 @@ public class HttpFileStorageService implements FileStorageService {
             log.error("Failed to read schema from Delta log for table: {}", tableName, e);
             throw new RuntimeException("Failed to read schema from Delta log: " + e.getMessage(), e);
         }
+    }
+    
+    /**
+     * Read schema from Parquet table (without Delta Log)
+     * Reads schema from actual Parquet file
+     */
+    private String readParquetTableSchema(String tableName) {
+        if (parquetSchemaReader == null) {
+            log.warn("ParquetSchemaReader not available, using basic schema for table: {}", tableName);
+            return generateBasicParquetSchema(tableName);
+        }
+        
+        try {
+            // Construct table location
+            String tableLocation = resolveTableLocationByName(tableName);
+            File tableDir = new File(tableLocation);
+            
+            if (!tableDir.exists() || !tableDir.isDirectory()) {
+                log.warn("Table directory not found: {}. Using basic schema.", tableLocation);
+                return generateBasicParquetSchema(tableName);
+            }
+            
+            // Find first Parquet file in directory
+            File parquetFile = parquetSchemaReader.findFirstParquetFile(tableDir);
+            
+            if (parquetFile == null) {
+                log.warn("No Parquet files found in directory: {}. Using basic schema.", tableLocation);
+                return generateBasicParquetSchema(tableName);
+            }
+            
+            // Read schema from Parquet file
+            log.info("Reading Parquet schema from file: {}", parquetFile.getName());
+            return parquetSchemaReader.readSchemaFromFile(parquetFile);
+            
+        } catch (IOException e) {
+            log.error("Failed to read Parquet schema for table: {}. Falling back to basic schema.", tableName, e);
+            return generateBasicParquetSchema(tableName);
+        }
+    }
+    
+    /**
+     * Generate a basic schema for Parquet tables
+     */
+    private String generateBasicParquetSchema(String tableName) {
+        // Generate a minimal schema structure
+        return """
+            {
+              "type": "struct",
+              "fields": [
+                {
+                  "name": "id",
+                  "type": "long",
+                  "nullable": false,
+                  "metadata": {}
+                },
+                {
+                  "name": "data",
+                  "type": "string",
+                  "nullable": true,
+                  "metadata": {}
+                },
+                {
+                  "name": "timestamp",
+                  "type": "timestamp",
+                  "nullable": true,
+                  "metadata": {}
+                }
+              ]
+            }
+            """;
     }
     
     /**

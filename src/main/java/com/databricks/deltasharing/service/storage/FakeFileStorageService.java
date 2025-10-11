@@ -299,8 +299,20 @@ public class FakeFileStorageService implements FileStorageService {
     /**
      * Generate a fake schema string based on table name and format.
      * Creates a realistic Delta/Parquet schema with varied column types and metadata.
+     * 
+     * Note: Both Delta and Parquet tables use the same Arrow-based schema format in Delta Sharing.
+     * The difference is in how the data is stored/accessed:
+     * - Delta tables have _delta_log for versioning and transactions
+     * - Parquet tables are just raw Parquet files
+     * 
+     * @param tableName The name of the table
+     * @param format The table format (delta or parquet) - currently not used as schema format is same
+     * @return JSON schema string
      */
     public static String generateFakeSchema(String tableName, String format) {
+        // Note: format parameter is present for interface compatibility but not currently used
+        // because both Delta and Parquet use the same schema JSON structure
+        
         // Select schema complexity based on table name
         boolean isFactTable = tableName.startsWith("fact_");
         boolean isDimTable = tableName.startsWith("dim_");

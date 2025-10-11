@@ -6,6 +6,7 @@ import com.databricks.deltasharing.dto.protocol.FileResponse;
 import com.databricks.deltasharing.model.DeltaTable;
 import com.databricks.deltasharing.service.delta.DataSkippingService;
 import com.databricks.deltasharing.service.delta.DeltaLogReader;
+import com.databricks.deltasharing.service.parquet.ParquetSchemaReader;
 import io.minio.GetObjectArgs;
 import io.minio.GetPresignedObjectUrlArgs;
 import io.minio.MinioClient;
@@ -19,6 +20,7 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import jakarta.annotation.PostConstruct;
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -64,6 +66,9 @@ public class MinIOFileStorageService implements FileStorageService {
     
     @Autowired(required = false)
     private DataSkippingService dataSkippingService;
+    
+    @Autowired(required = false)
+    private ParquetSchemaReader parquetSchemaReader;
     
     @PostConstruct
     public void init() {
@@ -339,16 +344,31 @@ public class MinIOFileStorageService implements FileStorageService {
     @Override
     @Cacheable(value = "tableSchemas", key = "#tableName + '_' + #format")
     public String getTableSchema(String tableName, String format) {
-        log.debug("Reading (uncached) schema for table: {} (format: {}) from Delta log in MinIO", tableName, format);
-        
-        if (deltaLogReader == null) {
-            log.warn("DeltaLogReader not available, cannot read schema");
-            throw new IllegalStateException("DeltaLogReader is required for MinIO storage");
-        }
+        log.debug("Reading (uncached) schema for table: {} (format: {}) from MinIO", tableName, format);
         
         if (!isAvailable()) {
             log.warn("MinIO storage service is not available");
             throw new IllegalStateException("MinIO storage service is not available");
+        }
+        
+        // Handle different formats
+        if ("delta".equalsIgnoreCase(format)) {
+            return readDeltaTableSchema(tableName);
+        } else if ("parquet".equalsIgnoreCase(format)) {
+            return readParquetTableSchema(tableName);
+        } else {
+            log.warn("Unsupported table format: {}. Defaulting to Parquet schema.", format);
+            return readParquetTableSchema(tableName);
+        }
+    }
+    
+    /**
+     * Read schema from Delta table (via Delta Log)
+     */
+    private String readDeltaTableSchema(String tableName) {
+        if (deltaLogReader == null) {
+            log.warn("DeltaLogReader not available, cannot read Delta schema");
+            throw new IllegalStateException("DeltaLogReader is required for Delta tables");
         }
         
         try {
@@ -386,6 +406,100 @@ public class MinIOFileStorageService implements FileStorageService {
             log.error("Failed to read schema from Delta log in MinIO for table: {}", tableName, e);
             throw new RuntimeException("Failed to read schema from Delta log: " + e.getMessage(), e);
         }
+    }
+    
+    /**
+     * Read schema from Parquet table (without Delta Log)
+     * Reads schema from actual Parquet file in MinIO
+     */
+    private String readParquetTableSchema(String tableName) {
+        if (parquetSchemaReader == null) {
+            log.warn("ParquetSchemaReader not available, using basic schema for table: {}", tableName);
+            return generateBasicParquetSchema(tableName);
+        }
+        
+        if (!isAvailable()) {
+            log.warn("MinIO storage service is not available, using basic schema for table: {}", tableName);
+            return generateBasicParquetSchema(tableName);
+        }
+        
+        try {
+            // Construct table prefix
+            String tablePrefix = resolveTablePrefixByName(tableName);
+            
+            // List objects in the table directory to find a Parquet file
+            io.minio.ListObjectsArgs listArgs = io.minio.ListObjectsArgs.builder()
+                    .bucket(bucket)
+                    .prefix(tablePrefix)
+                    .recursive(false)
+                    .build();
+            
+            String firstParquetObject = null;
+            for (io.minio.Result<io.minio.messages.Item> result : minioClient.listObjects(listArgs)) {
+                io.minio.messages.Item item = result.get();
+                if (item.objectName().endsWith(".parquet")) {
+                    firstParquetObject = item.objectName();
+                    break;
+                }
+            }
+            
+            if (firstParquetObject == null) {
+                log.warn("No Parquet files found in MinIO for table: {}. Using basic schema.", tableName);
+                return generateBasicParquetSchema(tableName);
+            }
+            
+            // Read Parquet file from MinIO to get schema
+            log.info("Reading Parquet schema from MinIO object: {}", firstParquetObject);
+            
+            try (InputStream parquetStream = minioClient.getObject(
+                    GetObjectArgs.builder()
+                            .bucket(bucket)
+                            .object(firstParquetObject)
+                            .build())) {
+                
+                return parquetSchemaReader.readSchemaFromStream(parquetStream, firstParquetObject);
+            }
+            
+        } catch (IOException e) {
+            log.error("Failed to read Parquet schema for table: {}. Falling back to basic schema.", tableName, e);
+            return generateBasicParquetSchema(tableName);
+        } catch (Exception e) {
+            log.error("MinIO error while reading Parquet schema for table: {}. Falling back to basic schema.", 
+                    tableName, e);
+            return generateBasicParquetSchema(tableName);
+        }
+    }
+    
+    /**
+     * Generate a basic schema for Parquet tables
+     */
+    private String generateBasicParquetSchema(String tableName) {
+        // Generate a minimal schema structure
+        return """
+            {
+              "type": "struct",
+              "fields": [
+                {
+                  "name": "id",
+                  "type": "long",
+                  "nullable": false,
+                  "metadata": {}
+                },
+                {
+                  "name": "data",
+                  "type": "string",
+                  "nullable": true,
+                  "metadata": {}
+                },
+                {
+                  "name": "timestamp",
+                  "type": "timestamp",
+                  "nullable": true,
+                  "metadata": {}
+                }
+              ]
+            }
+            """;
     }
     
     /**
