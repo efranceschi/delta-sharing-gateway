@@ -119,20 +119,31 @@ public class MinIOFileStorageService implements FileStorageService {
     @Override
     public List<FileResponse> getTableFiles(DeltaTable table, Long version, 
                                              List<String> predicateHints, Integer limitHint) {
-        log.debug("Getting MinIO files for table: {} at location: {}", 
-                  table.getName(), table.getLocation());
+        log.debug("Getting MinIO files for table: {} (format: {}) at location: {}", 
+                  table.getName(), table.getFormat(), table.getLocation());
         
         if (!isAvailable()) {
             log.warn("MinIO storage service is not available");
             return new ArrayList<>();
         }
         
-        // Try to use Delta transaction log if enabled
+        // Check if table is Delta format before trying to read Delta Log
+        boolean isDeltaTable = "delta".equalsIgnoreCase(table.getFormat());
+        
+        if (!isDeltaTable) {
+            log.info("Table {} is format '{}', not Delta. Skipping Delta log read.", 
+                    table.getName(), table.getFormat());
+            // For non-Delta tables, use legacy mode directly
+            return getTableFilesLegacy(table, version, limitHint);
+        }
+        
+        // Try to use Delta transaction log if enabled (only for Delta tables)
         if (useDeltaLog && deltaLogReader != null && dataSkippingService != null) {
             try {
                 return getTableFilesFromDeltaLog(table, version, predicateHints, limitHint);
             } catch (Exception e) {
-                log.warn("Failed to read Delta log, falling back to direct file listing: {}", e.getMessage());
+                log.warn("Failed to read Delta log for table {}, falling back to direct file listing: {}", 
+                        table.getName(), e.getMessage());
                 log.debug("Delta log error details", e);
             }
         }
