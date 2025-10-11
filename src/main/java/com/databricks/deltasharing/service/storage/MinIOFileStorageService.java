@@ -34,15 +34,17 @@ import java.util.stream.Collectors;
  * 
  * This service:
  * - Reads Delta Lake tables from MinIO/S3 object storage
+ * - Extracts bucket name and path from table location (format: s3://bucket-name/path/to/table)
  * - Reads schemas and partition columns from Delta transaction log (_delta_log/*.json) stored in MinIO
  * - Generates pre-signed URLs with configurable expiration for secure file access
  * - Supports Delta Lake transaction log reading and data skipping
  * 
  * Configuration:
  * - endpoint: MinIO/S3 endpoint URL
- * - bucket: S3 bucket name where Delta tables are stored
  * - accessKey/secretKey: S3 credentials
  * - urlExpirationMinutes: Duration for pre-signed URL validity
+ * 
+ * Note: Bucket name is extracted from table location field (s3://bucket/path), not from configuration
  */
 @Service
 @Slf4j
@@ -54,12 +56,29 @@ public class MinIOFileStorageService implements FileStorageService {
     private String endpoint;
     private String accessKey;
     private String secretKey;
-    private String bucket;
     private int urlExpirationMinutes = 60; // Default 1 hour
     private boolean enabled = true;
     private boolean useDeltaLog = true; // Use Delta transaction log by default
     
     private MinioClient minioClient;
+    
+    /**
+     * Helper class to hold parsed S3 location information
+     */
+    private static class S3Location {
+        final String bucket;
+        final String path;
+        
+        S3Location(String bucket, String path) {
+            this.bucket = bucket;
+            this.path = path;
+        }
+        
+        @Override
+        public String toString() {
+            return String.format("s3://%s/%s", bucket, path);
+        }
+    }
     
     @Autowired(required = false)
     private DeltaLogReader deltaLogReader;
@@ -126,29 +145,30 @@ public class MinIOFileStorageService implements FileStorageService {
      */
     private List<FileResponse> getTableFilesFromDeltaLog(DeltaTable table, Long version,
                                                           List<String> predicateHints, Integer limitHint) throws Exception {
-        String tablePrefix = resolveTablePrefix(table);
-        String deltaLogPath = tablePrefix + "_delta_log/";
+        // Parse S3 location to get bucket and path
+        S3Location s3Location = resolveTableLocation(table);
+        String deltaLogPath = s3Location.path + "_delta_log/";
         
         // Determine which version to read
-        Long targetVersion = version != null ? version : 0L; // TODO: find latest version
+        Long targetVersion = version != null ? version : findLatestVersion(s3Location.bucket, deltaLogPath);
         String logFileName = String.format("%020d.json", targetVersion);
         String logObjectName = deltaLogPath + logFileName;
         
-        log.debug("Reading Delta log from MinIO: {}/{}", bucket, logObjectName);
+        log.debug("Reading Delta log from MinIO: {}/{}", s3Location.bucket, logObjectName);
         
         // Read Delta log from MinIO
         DeltaSnapshot snapshot;
         try (InputStream logStream = minioClient.getObject(
                 GetObjectArgs.builder()
-                        .bucket(bucket)
+                        .bucket(s3Location.bucket)
                         .object(logObjectName)
                         .build())) {
             
             snapshot = deltaLogReader.readDeltaLog(logStream, targetVersion);
         }
         
-        log.info("Delta log read: {} files in snapshot (version={})", 
-                 snapshot.getFileCount(), targetVersion);
+        log.info("Delta log read: {} files in snapshot (version={}) from {}", 
+                 snapshot.getFileCount(), targetVersion, s3Location);
         
         // Apply data skipping with predicates
         List<AddAction> allFiles = snapshot.getAddActions();
@@ -165,84 +185,54 @@ public class MinIOFileStorageService implements FileStorageService {
         
         // Convert AddAction to FileResponse with pre-signed URLs
         return limitedFiles.stream()
-                .map(addAction -> createFileResponseFromAddAction(addAction, tablePrefix, version))
+                .map(addAction -> createFileResponseFromAddAction(addAction, s3Location, version))
                 .collect(Collectors.toList());
     }
     
     /**
      * Legacy method: list files directly from MinIO without Delta log
      * Does NOT support data skipping (predicates are ignored)
+     * 
+     * @deprecated This method is deprecated and always returns an empty list.
+     *             Use Delta transaction log instead (getTableFilesFromDeltaLog)
      */
+    @Deprecated
     private List<FileResponse> getTableFilesLegacy(DeltaTable table, Long version, Integer limitHint) {
-        List<FileResponse> files = new ArrayList<>();
-        String prefix = resolveTablePrefix(table);
-        
-        try {
-            // List all Parquet files directly
-            // Note: This is inefficient and doesn't support data skipping
-            log.warn("Legacy mode does not support data skipping - all files will be returned");
-            
-            // Implementation omitted for brevity - same as before
-            // Just return empty list to force Delta log usage
-            log.error("Legacy mode is deprecated. Please ensure Delta transaction log is available.");
-            
-        } catch (Exception e) {
-            log.error("Error listing files from MinIO for table: {}", table.getName(), e);
-        }
-        
-        return files;
+        log.error("Legacy mode is deprecated. Please ensure Delta transaction log is available for table: {} at {}",
+                table.getName(), table.getLocation());
+        return new ArrayList<>();
     }
     
-    private String resolveTablePrefix(DeltaTable table) {
+    /**
+     * Resolve S3 location from table, returning bucket and path
+     * 
+     * @param table Delta table with location field
+     * @return S3Location with bucket and path
+     * @throws IllegalArgumentException if table location is invalid
+     */
+    private S3Location resolveTableLocation(DeltaTable table) {
         String location = table.getLocation();
         
         if (location == null || location.isEmpty()) {
-            return table.getName() + "/";
+            throw new IllegalArgumentException(
+                "Table location is required but was null or empty for table: " + table.getName());
         }
         
-        // Handle s3:// prefix
-        if (location.startsWith("s3://")) {
-            // Extract path after bucket name: s3://bucket/path/to/table -> path/to/table
-            String withoutProtocol = location.substring(5); // Remove "s3://"
-            int firstSlash = withoutProtocol.indexOf('/');
-            
-            if (firstSlash > 0) {
-                // Extract bucket name for validation (optional)
-                String bucketInLocation = withoutProtocol.substring(0, firstSlash);
-                location = withoutProtocol.substring(firstSlash + 1); // Path after bucket
-                
-                log.debug("Resolved S3 location: bucket={}, path={}", bucketInLocation, location);
-            } else {
-                // Only bucket name, no path
-                location = "";
-            }
-        }
-        
-        // Remove leading slash if present (for non-S3 paths)
-        if (location.startsWith("/")) {
-            location = location.substring(1);
-        }
-        
-        // Ensure trailing slash
-        if (!location.isEmpty() && !location.endsWith("/")) {
-            location = location + "/";
-        }
-        
-        return !location.isEmpty() ? location : table.getName() + "/";
+        return parseS3Location(location);
     }
     
     /**
      * Create FileResponse from AddAction (Delta log)
      */
-    private FileResponse createFileResponseFromAddAction(AddAction addAction, String tablePrefix, Long version) {
+    private FileResponse createFileResponseFromAddAction(AddAction addAction, S3Location s3Location, Long version) {
         try {
-            String objectName = tablePrefix + addAction.getPath();
+            String objectName = s3Location.path + addAction.getPath();
             
             // Generate pre-signed URL
             String presignedUrl = minioClient.getPresignedObjectUrl(
                     GetPresignedObjectUrlArgs.builder()
                             .method(Method.GET)
-                            .bucket(bucket)
+                            .bucket(s3Location.bucket)
                             .object(objectName)
                             .expiry(urlExpirationMinutes, TimeUnit.MINUTES)
                             .build()
@@ -280,26 +270,9 @@ public class MinIOFileStorageService implements FileStorageService {
                     .build();
                     
         } catch (Exception e) {
-            log.error("Failed to create FileResponse for: {}", addAction.getPath(), e);
+            log.error("Failed to create FileResponse for: {} in {}", addAction.getPath(), s3Location, e);
             return null;
         }
-    }
-    
-    private Map<String, String> extractPartitionValues(String objectName) {
-        Map<String, String> partitions = new HashMap<>();
-        
-        // Parse partition values from path (e.g., table/year=2024/month=01/file.parquet)
-        String[] parts = objectName.split("/");
-        for (String part : parts) {
-            if (part.contains("=")) {
-                String[] keyValue = part.split("=", 2);
-                if (keyValue.length == 2) {
-                    partitions.put(keyValue[0], keyValue[1]);
-                }
-            }
-        }
-        
-        return partitions;
     }
     
     @Override
@@ -328,12 +301,142 @@ public class MinIOFileStorageService implements FileStorageService {
             return false;
         }
         
-        if (bucket == null || bucket.isEmpty()) {
-            log.debug("MinIO bucket is not configured");
-            return false;
+        return true;
+    }
+    
+    /**
+     * Parse S3 location string to extract bucket and path
+     * Format: s3://bucket-name/path/to/table
+     * 
+     * @param location S3 location string
+     * @return S3Location object with bucket and path
+     * @throws IllegalArgumentException if location format is invalid
+     */
+    private S3Location parseS3Location(String location) {
+        if (location == null || location.isEmpty()) {
+            throw new IllegalArgumentException("Table location cannot be null or empty");
         }
         
-        return true;
+        // Handle s3:// prefix
+        if (!location.startsWith("s3://")) {
+            throw new IllegalArgumentException("Table location must start with s3:// - got: " + location);
+        }
+        
+        // Remove s3:// prefix
+        String withoutProtocol = location.substring(5);
+        
+        // Find first slash to separate bucket from path
+        int firstSlash = withoutProtocol.indexOf('/');
+        
+        if (firstSlash < 0) {
+            // Only bucket, no path
+            String bucket = withoutProtocol;
+            log.debug("Parsed S3 location: bucket={}, path=(empty)", bucket);
+            return new S3Location(bucket, "");
+        }
+        
+        // Extract bucket and path
+        String bucket = withoutProtocol.substring(0, firstSlash);
+        String path = withoutProtocol.substring(firstSlash + 1);
+        
+        // Remove leading slash if present
+        if (path.startsWith("/")) {
+            path = path.substring(1);
+        }
+        
+        // Ensure trailing slash
+        if (!path.isEmpty() && !path.endsWith("/")) {
+            path = path + "/";
+        }
+        
+        log.debug("Parsed S3 location: bucket={}, path={}", bucket, path);
+        return new S3Location(bucket, path);
+    }
+    
+    /**
+     * Find the latest version of Delta table by checking _last_checkpoint or listing log files
+     * 
+     * Strategy:
+     * 1. Try to read _last_checkpoint file (contains metadata about latest checkpoint)
+     * 2. If not found, list all *.json files in _delta_log/ and find highest version number
+     * 3. If nothing found, return 0L as default
+     * 
+     * @param bucket S3 bucket name
+     * @param deltaLogPath Path to _delta_log directory (with trailing slash)
+     * @return Latest version number, or 0L if not found
+     */
+    private Long findLatestVersion(String bucket, String deltaLogPath) {
+        try {
+            // Strategy 1: Try to read _last_checkpoint file
+            String checkpointFile = deltaLogPath + "_last_checkpoint";
+            
+            try (InputStream checkpointStream = minioClient.getObject(
+                    GetObjectArgs.builder()
+                            .bucket(bucket)
+                            .object(checkpointFile)
+                            .build())) {
+                
+                // Parse JSON to get version number
+                // Expected format: {"version":123,"size":456}
+                String content = new String(checkpointStream.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+                
+                // Simple JSON parsing for version field
+                java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("\"version\"\\s*:\\s*(\\d+)");
+                java.util.regex.Matcher matcher = pattern.matcher(content);
+                
+                if (matcher.find()) {
+                    Long version = Long.parseLong(matcher.group(1));
+                    log.debug("Found latest version from _last_checkpoint: {}", version);
+                    return version;
+                }
+            } catch (Exception e) {
+                log.debug("_last_checkpoint not found or invalid, will list log files: {}", e.getMessage());
+            }
+            
+            // Strategy 2: List all JSON files and find highest version
+            log.debug("Listing Delta log files in: {}/{}", bucket, deltaLogPath);
+            
+            Long maxVersion = null;
+            io.minio.ListObjectsArgs listArgs = io.minio.ListObjectsArgs.builder()
+                    .bucket(bucket)
+                    .prefix(deltaLogPath)
+                    .recursive(false)
+                    .build();
+            
+            for (io.minio.Result<io.minio.messages.Item> result : minioClient.listObjects(listArgs)) {
+                io.minio.messages.Item item = result.get();
+                String objectName = item.objectName();
+                
+                // Extract filename from full path
+                String filename = objectName.substring(deltaLogPath.length());
+                
+                // Check if it's a version file (e.g., 00000000000000000000.json)
+                if (filename.matches("\\d{20}\\.json")) {
+                    try {
+                        Long version = Long.parseLong(filename.substring(0, 20));
+                        if (maxVersion == null || version > maxVersion) {
+                            maxVersion = version;
+                        }
+                    } catch (NumberFormatException e) {
+                        log.warn("Failed to parse version from filename: {}", filename);
+                    }
+                }
+            }
+            
+            if (maxVersion != null) {
+                log.info("Found latest version from file listing: {} in {}/{}", maxVersion, bucket, deltaLogPath);
+                return maxVersion;
+            }
+            
+            // Strategy 3: Default to version 0
+            log.warn("No Delta log files found in {}/{}, defaulting to version 0", bucket, deltaLogPath);
+            return 0L;
+            
+        } catch (Exception e) {
+            log.error("Error finding latest version in {}/{}, defaulting to version 0: {}", 
+                    bucket, deltaLogPath, e.getMessage());
+            return 0L;
+        }
     }
     
     /**
@@ -372,22 +475,22 @@ public class MinIOFileStorageService implements FileStorageService {
         }
         
         try {
-            // Construct table prefix and Delta log path in MinIO
-            String tablePrefix = resolveTablePrefixByName(tableName);
-            String deltaLogPath = tablePrefix + "_delta_log/";
+            // Parse S3 location from table name (assuming format s3://bucket/path/tablename)
+            S3Location s3Location = parseS3LocationFromTableName(tableName);
+            String deltaLogPath = s3Location.path + "_delta_log/";
             
-            // Read the latest version (or version 0 as default)
-            Long targetVersion = 0L; // TODO: find latest version from _last_checkpoint or listing
+            // Find the latest version
+            Long targetVersion = findLatestVersion(s3Location.bucket, deltaLogPath);
             String logFileName = String.format("%020d.json", targetVersion);
             String logObjectName = deltaLogPath + logFileName;
             
-            log.debug("Reading Delta log schema from MinIO: {}/{}", bucket, logObjectName);
+            log.debug("Reading Delta log schema from MinIO: {}/{}", s3Location.bucket, logObjectName);
             
             // Read Delta log from MinIO
             DeltaSnapshot snapshot;
             try (InputStream logStream = minioClient.getObject(
                     GetObjectArgs.builder()
-                            .bucket(bucket)
+                            .bucket(s3Location.bucket)
                             .object(logObjectName)
                             .build())) {
                 
@@ -424,13 +527,13 @@ public class MinIOFileStorageService implements FileStorageService {
         }
         
         try {
-            // Construct table prefix
-            String tablePrefix = resolveTablePrefixByName(tableName);
+            // Parse S3 location from table name
+            S3Location s3Location = parseS3LocationFromTableName(tableName);
             
             // List objects in the table directory to find a Parquet file
             io.minio.ListObjectsArgs listArgs = io.minio.ListObjectsArgs.builder()
-                    .bucket(bucket)
-                    .prefix(tablePrefix)
+                    .bucket(s3Location.bucket)
+                    .prefix(s3Location.path)
                     .recursive(false)
                     .build();
             
@@ -444,16 +547,17 @@ public class MinIOFileStorageService implements FileStorageService {
             }
             
             if (firstParquetObject == null) {
-                log.warn("No Parquet files found in MinIO for table: {}. Using basic schema.", tableName);
+                log.warn("No Parquet files found in MinIO for table: {} at {}. Using basic schema.", 
+                        tableName, s3Location);
                 return generateBasicParquetSchema(tableName);
             }
             
             // Read Parquet file from MinIO to get schema
-            log.info("Reading Parquet schema from MinIO object: {}", firstParquetObject);
+            log.info("Reading Parquet schema from MinIO: {}/{}", s3Location.bucket, firstParquetObject);
             
             try (InputStream parquetStream = minioClient.getObject(
                     GetObjectArgs.builder()
-                            .bucket(bucket)
+                            .bucket(s3Location.bucket)
                             .object(firstParquetObject)
                             .build())) {
                 
@@ -479,24 +583,6 @@ public class MinIOFileStorageService implements FileStorageService {
             {
               "type": "struct",
               "fields": [
-                {
-                  "name": "id",
-                  "type": "long",
-                  "nullable": false,
-                  "metadata": {}
-                },
-                {
-                  "name": "data",
-                  "type": "string",
-                  "nullable": true,
-                  "metadata": {}
-                },
-                {
-                  "name": "timestamp",
-                  "type": "timestamp",
-                  "nullable": true,
-                  "metadata": {}
-                }
               ]
             }
             """;
@@ -523,22 +609,22 @@ public class MinIOFileStorageService implements FileStorageService {
         }
         
         try {
-            // Construct table prefix and Delta log path in MinIO
-            String tablePrefix = resolveTablePrefixByName(tableName);
-            String deltaLogPath = tablePrefix + "_delta_log/";
+            // Parse S3 location from table name
+            S3Location s3Location = parseS3LocationFromTableName(tableName);
+            String deltaLogPath = s3Location.path + "_delta_log/";
             
-            // Read the latest version (or version 0 as default)
-            Long targetVersion = 0L;
+            // Find the latest version
+            Long targetVersion = findLatestVersion(s3Location.bucket, deltaLogPath);
             String logFileName = String.format("%020d.json", targetVersion);
             String logObjectName = deltaLogPath + logFileName;
             
-            log.debug("Reading Delta log partition columns from MinIO: {}/{}", bucket, logObjectName);
+            log.debug("Reading Delta log partition columns from MinIO: {}/{}", s3Location.bucket, logObjectName);
             
             // Read Delta log from MinIO
             DeltaSnapshot snapshot;
             try (InputStream logStream = minioClient.getObject(
                     GetObjectArgs.builder()
-                            .bucket(bucket)
+                            .bucket(s3Location.bucket)
                             .object(logObjectName)
                             .build())) {
                 
@@ -562,19 +648,26 @@ public class MinIOFileStorageService implements FileStorageService {
     }
     
     /**
-     * Resolve table prefix by name (for schema and partition column lookup)
-     * Helper method that works similarly to resolveTablePrefix but only with table name
+     * Parse S3 location from table name
+     * Assumes tableName is the full location path in format: s3://bucket/path/to/table
+     * If tableName doesn't contain s3://, treats it as a simple table name and uses default bucket
+     * 
+     * @param tableName Table name or full S3 location
+     * @return S3Location with bucket and path
      */
-    private String resolveTablePrefixByName(String tableName) {
-        // For MinIO, we assume tables are stored directly in the bucket root
-        // or follow a simple naming convention
-        String prefix = tableName;
-        
-        // Ensure trailing slash
-        if (!prefix.endsWith("/")) {
-            prefix = prefix + "/";
+    private S3Location parseS3LocationFromTableName(String tableName) {
+        if (tableName == null || tableName.isEmpty()) {
+            throw new IllegalArgumentException("Table name cannot be null or empty");
         }
         
-        return prefix;
+        // Check if tableName is actually a full S3 location
+        if (tableName.startsWith("s3://")) {
+            return parseS3Location(tableName);
+        }
+        
+        // If not an S3 location, we need to construct one
+        // This requires the table to have a proper location configured
+        throw new IllegalArgumentException(
+            "Table name must be a full S3 location (s3://bucket/path) but got: " + tableName);
     }
 }
