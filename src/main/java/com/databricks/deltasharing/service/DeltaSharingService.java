@@ -227,18 +227,22 @@ public class DeltaSharingService {
         boolean useDeltaFormat = isDeltaTable && 
                                  (clientSupportsDelta || requestedFormat == null || requestedFormat.isEmpty());
         
-        log.debug("Metadata - Table format: {}, Requested format: {}, Client supports delta: {}, Using delta format: {}", 
-                  table.getFormat(), requestedFormat, clientSupportsDelta, useDeltaFormat);
+        log.info("📊 Metadata Format Decision - Table: {}, Format: {}, Requested: {}, ClientSupportsDelta: {}, UseDeltaFormat: {}", 
+                  tableName, table.getFormat(), requestedFormat, clientSupportsDelta, useDeltaFormat);
         
         // Protocol line
         // For Delta format: include both minReaderVersion and minWriterVersion
         // For Parquet format: include only minReaderVersion
+        // Reference: https://github.com/delta-io/delta-sharing/blob/main/PROTOCOL.md
+        // Note: Delta Sharing Protocol versions are different from Delta Lake Protocol versions
+        // Delta Sharing uses minReaderVersion=1 and minWriterVersion=2
         ProtocolResponse.ProtocolResponseBuilder protocolBuilder = ProtocolResponse.builder()
                 .minReaderVersion(1);
         
         if (useDeltaFormat) {
             // Delta format requires minWriterVersion
-            protocolBuilder.minWriterVersion(1);
+            // Using minWriterVersion=2 for Delta Sharing Protocol
+            protocolBuilder.minWriterVersion(2);
         }
         
         ProtocolResponse protocol = protocolBuilder.build();
@@ -379,18 +383,22 @@ public class DeltaSharingService {
         boolean useDeltaFormat = isDeltaTable && 
                                  (clientSupportsDelta || requestedFormat == null || requestedFormat.isEmpty());
         
-        log.debug("Table format: {}, Requested format: {}, Client supports delta: {}, Using delta format: {}", 
-                  table.getFormat(), requestedFormat, clientSupportsDelta, useDeltaFormat);
+        log.info("📊 Format Decision - Table: {}, Format: {}, Requested: {}, ClientSupportsDelta: {}, UseDeltaFormat: {}", 
+                  tableName, table.getFormat(), requestedFormat, clientSupportsDelta, useDeltaFormat);
         
         // Protocol line
         // For Delta format: include both minReaderVersion and minWriterVersion
         // For Parquet format: include only minReaderVersion
+        // Reference: https://github.com/delta-io/delta-sharing/blob/main/PROTOCOL.md
+        // Note: Delta Sharing Protocol versions are different from Delta Lake Protocol versions
+        // Delta Sharing uses minReaderVersion=1 and minWriterVersion=2
         ProtocolResponse.ProtocolResponseBuilder protocolBuilder = ProtocolResponse.builder()
                 .minReaderVersion(1);
         
         if (useDeltaFormat) {
             // Delta format requires minWriterVersion
-            protocolBuilder.minWriterVersion(1);
+            // Using minWriterVersion=2 for Delta Sharing Protocol
+            protocolBuilder.minWriterVersion(2);
         }
         
         ProtocolResponse protocol = protocolBuilder.build();
