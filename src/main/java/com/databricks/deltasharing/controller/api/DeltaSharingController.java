@@ -345,10 +345,11 @@ public class DeltaSharingController {
                 
                 switch (key) {
                     case "responseformat":
-                        // Take first value if multiple provided
-                        String format = value.split(",")[0].trim();
+                        // Store the full list of supported formats
+                        // When client sends a list (e.g., "parquet,delta"), it means they support both
+                        // Server should choose based on table capabilities, not just pick the first one
                         if (request.getResponseFormat() == null) {
-                            request.setResponseFormat(format);
+                            request.setResponseFormat(value); // Store full list: "parquet,delta"
                         }
                         break;
                     case "includeendstreamaction":
