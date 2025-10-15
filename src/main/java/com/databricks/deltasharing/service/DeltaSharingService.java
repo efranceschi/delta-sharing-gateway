@@ -33,6 +33,7 @@ public class DeltaSharingService {
     private final DeltaTableRepository tableRepository;
     private final FileStorageService fileStorageService;
     private final PaginationService paginationService;
+    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
     
     /**
      * List all shares
@@ -218,11 +219,16 @@ public class DeltaSharingService {
         
         // Add EndStreamAction if requested by client
         if (request != null && Boolean.TRUE.equals(request.getIncludeEndStreamAction())) {
-            EndStreamAction endStreamAction = EndStreamAction.builder()
+            EndStreamAction action = EndStreamAction.builder()
                     .refreshToken(generateRefreshToken(shareName, schemaName, tableName))
                     .build();
             
-            String endStreamJson = toJson(endStreamAction);
+            // Wrap in EndStreamActionWrapper to match protocol format
+            EndStreamActionWrapper wrapper = EndStreamActionWrapper.builder()
+                    .endStreamAction(action)
+                    .build();
+            
+            String endStreamJson = toJson(wrapper);
             response.append(endStreamJson).append("\n");
             
             log.debug("Added EndStreamAction to metadata response");
@@ -386,12 +392,17 @@ public class DeltaSharingService {
         // When includeEndStreamAction=true, the server MUST include EndStreamAction in the response
         // The client will throw an exception if it's missing
         if (Boolean.TRUE.equals(request.getIncludeEndStreamAction())) {
-            EndStreamAction endStreamAction = EndStreamAction.builder()
+            EndStreamAction action = EndStreamAction.builder()
                     .refreshToken(generateRefreshToken(shareName, schemaName, tableName))
                     .minUrlExpirationTimestamp(minExpirationTimestamp)
                     .build();
             
-            String endStreamJson = toJson(endStreamAction);
+            // Wrap in EndStreamActionWrapper to match protocol format
+            EndStreamActionWrapper wrapper = EndStreamActionWrapper.builder()
+                    .endStreamAction(action)
+                    .build();
+            
+            String endStreamJson = toJson(wrapper);
             response.append(endStreamJson).append("\n");
             
             log.debug("Added EndStreamAction to response with minUrlExpirationTimestamp: {} (REQUIRED by client)", 
@@ -532,12 +543,15 @@ public class DeltaSharingService {
                 .build();
     }
     
+    /**
+     * Convert object to JSON string with pretty printing (2 spaces indentation)
+     * Uses configured ObjectMapper with INDENT_OUTPUT enabled
+     */
     private String toJson(Object obj) {
-        // Simple JSON conversion - in production use Jackson ObjectMapper
         try {
-            return new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(obj);
+            return objectMapper.writeValueAsString(obj);
         } catch (Exception e) {
-            log.error("Error converting to JSON", e);
+            log.error("Error converting to JSON: {}", e.getMessage(), e);
             return "{}";
         }
     }
