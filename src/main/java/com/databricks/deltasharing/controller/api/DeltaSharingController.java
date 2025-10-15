@@ -30,10 +30,11 @@ public class DeltaSharingController {
     
     private final DeltaSharingService deltaSharingService;
     
-    // Server uses Parquet response format (simple, unwrapped format)
-    // This format works for both Delta and Parquet tables
-    // Format: {"protocol": {...}}, {"metaData": {...}}, {"file": {...}}
-    private static final String DELTA_SHARING_CAPABILITIES = "responseformat=parquet";
+    // Server supports both response formats:
+    // - responseformat=parquet: Simple format for Parquet tables {"protocol": {...}}
+    // - responseformat=delta: Wrapped format for Delta tables {"protocol": {"deltaProtocol": {...}}}
+    // Format is automatically selected based on table.format field
+    private static final String DELTA_SHARING_CAPABILITIES = "responseformat=parquet,delta";
     
     /**
      * List all shares
