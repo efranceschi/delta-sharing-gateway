@@ -30,6 +30,15 @@ public class RequestLoggingFilter implements Filter {
         HttpServletRequest httpRequest = (HttpServletRequest) request;
         HttpServletResponse httpResponse = (HttpServletResponse) response;
         
+        String requestURI = httpRequest.getRequestURI();
+        
+        // Only apply logging filter to Delta Sharing API endpoints
+        // Skip logging for web interface endpoints (admin UI, login, etc.)
+        if (!requestURI.startsWith("/delta-sharing")) {
+            chain.doFilter(request, response);
+            return;
+        }
+        
         // Wrap request e response para poder ler o corpo múltiplas vezes
         ContentCachingRequestWrapper wrappedRequest = new ContentCachingRequestWrapper(httpRequest);
         ContentCachingResponseWrapper wrappedResponse = new ContentCachingResponseWrapper(httpResponse);
@@ -38,7 +47,6 @@ public class RequestLoggingFilter implements Filter {
         
         // Construir URL completa
         String method = httpRequest.getMethod();
-        String requestURI = httpRequest.getRequestURI();
         String queryString = httpRequest.getQueryString();
         
         String fullURL = requestURI;

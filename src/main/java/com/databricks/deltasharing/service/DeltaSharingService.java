@@ -210,12 +210,42 @@ public class DeltaSharingService {
         // Return newline-delimited JSON (NDJSON) format
         StringBuilder response = new StringBuilder();
         
-        // Protocol line - Always use simple format for /metadata endpoint
-        // The endpoint must return exactly 2 lines: protocol + metadata
-        ProtocolResponse protocol = ProtocolResponse.builder()
-                .minReaderVersion(1)
-                .build();
-        String protocolJson = String.format("{\"protocol\":%s}", toNdjson(protocol));
+        // Determine response format based on table type and client request
+        boolean isDeltaTable = "delta".equalsIgnoreCase(table.getFormat());
+        String requestedFormat = request != null ? request.getResponseFormat() : null;
+        
+        // Use delta format if:
+        // 1. Client explicitly requests responseformat=delta, OR
+        // 2. Table is delta and client doesn't specify format
+        boolean useDeltaFormat = "delta".equalsIgnoreCase(requestedFormat) || 
+                                 (isDeltaTable && (requestedFormat == null || requestedFormat.isEmpty()));
+        
+        log.debug("Metadata - Table format: {}, Requested format: {}, Using delta format: {}", 
+                  table.getFormat(), requestedFormat, useDeltaFormat);
+        
+        // Protocol line
+        // For Delta format: include both minReaderVersion and minWriterVersion
+        // For Parquet format: include only minReaderVersion
+        ProtocolResponse.ProtocolResponseBuilder protocolBuilder = ProtocolResponse.builder()
+                .minReaderVersion(1);
+        
+        if (useDeltaFormat) {
+            // Delta format requires minWriterVersion
+            protocolBuilder.minWriterVersion(1);
+        }
+        
+        ProtocolResponse protocol = protocolBuilder.build();
+        String protocolJson;
+        if (useDeltaFormat) {
+            // Delta format: {"protocol": {"deltaProtocol": {...}}}
+            DeltaProtocolWrapper wrapper = DeltaProtocolWrapper.builder()
+                    .deltaProtocol(protocol)
+                    .build();
+            protocolJson = String.format("{\"protocol\":%s}", toNdjson(wrapper));
+        } else {
+            // Parquet format: {"protocol": {...}}
+            protocolJson = String.format("{\"protocol\":%s}", toNdjson(protocol));
+        }
         response.append(protocolJson).append("\n");
         
         // Metadata line - Always use simple format for /metadata endpoint
@@ -339,9 +369,17 @@ public class DeltaSharingService {
                   table.getFormat(), requestedFormat, useDeltaFormat);
         
         // Protocol line
-        ProtocolResponse protocol = ProtocolResponse.builder()
-                .minReaderVersion(1)
-                .build();
+        // For Delta format: include both minReaderVersion and minWriterVersion
+        // For Parquet format: include only minReaderVersion
+        ProtocolResponse.ProtocolResponseBuilder protocolBuilder = ProtocolResponse.builder()
+                .minReaderVersion(1);
+        
+        if (useDeltaFormat) {
+            // Delta format requires minWriterVersion
+            protocolBuilder.minWriterVersion(1);
+        }
+        
+        ProtocolResponse protocol = protocolBuilder.build();
         String protocolJson;
         if (useDeltaFormat) {
             // Delta format: {"protocol": {"deltaProtocol": {...}}}
