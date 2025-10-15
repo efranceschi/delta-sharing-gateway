@@ -30,9 +30,11 @@ public class DeltaSharingController {
     
     private final DeltaSharingService deltaSharingService;
     
-    // Databricks uses responseformat=parquet for simple file format: {"file": {...}}
-    // responseformat=delta would use: {"file": {"deltaSingleAction": {...}}}
-    private static final String DELTA_SHARING_CAPABILITIES = "responseformat=parquet";
+    // Server supports both response formats:
+    // responseformat=parquet for simple file format: {"file": {...}}
+    // responseformat=delta for wrapped format: {"file": {"deltaSingleAction": {...}}}
+    // Format is automatically detected based on table type
+    private static final String DELTA_SHARING_CAPABILITIES = "responseformat=parquet,delta";
     
     /**
      * List all shares

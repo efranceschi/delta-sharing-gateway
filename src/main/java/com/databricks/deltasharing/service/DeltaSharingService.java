@@ -189,14 +189,33 @@ public class DeltaSharingService {
         // Return newline-delimited JSON (NDJSON) format
         StringBuilder response = new StringBuilder();
         
-        // Protocol line - SIMPLE format for /metadata endpoint (Databricks compatible)
+        // Detect format based on table type
+        // Delta tables need wrapped format, Parquet tables use simple format
+        boolean isDeltaFormat = "delta".equalsIgnoreCase(table.getFormat());
+        log.debug("Using {} format for metadata of table: {}", isDeltaFormat ? "delta" : "parquet", table.getName());
+        
+        // Protocol line
+        // Format for responseformat=parquet: {"protocol": {...}}
+        // Format for responseformat=delta: {"protocol": {"deltaProtocol": {...}}}
         ProtocolResponse protocol = ProtocolResponse.builder()
                 .minReaderVersion(1)
                 .build();
-        String protocolJson = String.format("{\"protocol\":%s}", toJson(protocol));
+        String protocolJson;
+        if (isDeltaFormat) {
+            // Delta format: {"protocol": {"deltaProtocol": {...}}}
+            DeltaProtocolWrapper wrapper = DeltaProtocolWrapper.builder()
+                    .deltaProtocol(protocol)
+                    .build();
+            protocolJson = String.format("{\"protocol\":%s}", toJson(wrapper));
+        } else {
+            // Parquet format: {"protocol": {...}}
+            protocolJson = String.format("{\"protocol\":%s}", toJson(protocol));
+        }
         response.append(protocolJson).append("\n");
         
-        // Metadata line - SIMPLE format for /metadata endpoint (Databricks compatible)
+        // Metadata line
+        // Format for responseformat=parquet: {"metaData": {...}}
+        // Format for responseformat=delta: {"metaData": {"deltaMetadata": {...}}}
         // Generate dynamic schema based on table name and format (delegated to storage service)
         String schemaString = fileStorageService.getTableSchema(table.getName(), table.getFormat());
         
@@ -213,8 +232,17 @@ public class DeltaSharingService {
                 .partitionColumns(partitionColumns)
                 .configuration(new HashMap<>())
                 .build();
-        // SIMPLE format (no deltaMetadata wrapper) - Databricks compatible
-        String metadataJson = String.format("{\"metaData\":%s}", toJson(metadata));
+        String metadataJson;
+        if (isDeltaFormat) {
+            // Delta format: {"metaData": {"deltaMetadata": {...}}}
+            DeltaMetadataWrapper wrapper = DeltaMetadataWrapper.builder()
+                    .deltaMetadata(metadata)
+                    .build();
+            metadataJson = String.format("{\"metaData\":%s}", toJson(wrapper));
+        } else {
+            // Parquet format: {"metaData": {...}}
+            metadataJson = String.format("{\"metaData\":%s}", toJson(metadata));
+        }
         response.append(metadataJson).append("\n");
         
         return response.toString();
@@ -268,6 +296,11 @@ public class DeltaSharingService {
         // Return newline-delimited JSON (NDJSON) format
         StringBuilder response = new StringBuilder();
         
+        // Detect format based on table type
+        // Delta tables need wrapped format, Parquet tables use simple format
+        boolean isDeltaFormat = "delta".equalsIgnoreCase(table.getFormat());
+        log.debug("Using {} format for table: {}", isDeltaFormat ? "delta" : "parquet", table.getName());
+        
         // Protocol line
         // Format for responseformat=parquet: {"protocol": {...}}
         // Format for responseformat=delta: {"protocol": {"deltaProtocol": {...}}}
@@ -275,7 +308,17 @@ public class DeltaSharingService {
                 .minReaderVersion(1)
                 .minWriterVersion(1)  // Required by official client
                 .build();
-        String protocolJson = String.format("{\"protocol\":%s}", toJson(protocol));
+        String protocolJson;
+        if (isDeltaFormat) {
+            // Delta format: {"protocol": {"deltaProtocol": {...}}}
+            DeltaProtocolWrapper wrapper = DeltaProtocolWrapper.builder()
+                    .deltaProtocol(protocol)
+                    .build();
+            protocolJson = String.format("{\"protocol\":%s}", toJson(wrapper));
+        } else {
+            // Parquet format: {"protocol": {...}}
+            protocolJson = String.format("{\"protocol\":%s}", toJson(protocol));
+        }
         response.append(protocolJson).append("\n");
         
         // Metadata line
@@ -298,8 +341,17 @@ public class DeltaSharingService {
                 // schema field omitted - not needed as schemaString already contains the schema
                 .partitionColumns(partitionColumns)
                 .build();
-        // Databricks format (responseformat=parquet): {"metaData": {...}}
-        String metadataJson = String.format("{\"metaData\":%s}", toJson(metadata));
+        String metadataJson;
+        if (isDeltaFormat) {
+            // Delta format: {"metaData": {"deltaMetadata": {...}}}
+            DeltaMetadataWrapper wrapper = DeltaMetadataWrapper.builder()
+                    .deltaMetadata(metadata)
+                    .build();
+            metadataJson = String.format("{\"metaData\":%s}", toJson(wrapper));
+        } else {
+            // Parquet format: {"metaData": {...}}
+            metadataJson = String.format("{\"metaData\":%s}", toJson(metadata));
+        }
         response.append(metadataJson).append("\n");
         
         // Get files from storage service
@@ -313,9 +365,18 @@ public class DeltaSharingService {
         // Add file lines to response - each wrapped in "file" key
         // Format for responseformat=parquet: {"file": {...}}
         // Format for responseformat=delta: {"file": {"deltaSingleAction": {...}}}
-        // Databricks uses parquet format by default
         for (FileResponse file : files) {
-            String fileJson = String.format("{\"file\":%s}", toJson(file));
+            String fileJson;
+            if (isDeltaFormat) {
+                // Delta format: {"file": {"deltaSingleAction": {...}}}
+                DeltaSingleActionWrapper wrapper = DeltaSingleActionWrapper.builder()
+                        .deltaSingleAction(file)
+                        .build();
+                fileJson = String.format("{\"file\":%s}", toJson(wrapper));
+            } else {
+                // Parquet format: {"file": {...}}
+                fileJson = String.format("{\"file\":%s}", toJson(file));
+            }
             response.append(fileJson).append("\n");
         }
         
