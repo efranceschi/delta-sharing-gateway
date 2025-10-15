@@ -58,4 +58,11 @@ public class QueryTableRequest {
      * Ending timestamp for CDF (optional)
      */
     private String endingTimestamp;
+    
+    /**
+     * Response format requested by client
+     * Can be "parquet" or "delta"
+     * Reference: https://github.com/delta-io/delta-sharing/blob/main/PROTOCOL.md#delta-sharing-capabilities-header
+     */
+    private String responseFormat;
 }

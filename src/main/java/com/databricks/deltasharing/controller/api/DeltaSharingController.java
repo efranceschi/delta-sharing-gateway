@@ -30,10 +30,16 @@ public class DeltaSharingController {
     
     private final DeltaSharingService deltaSharingService;
     
-    // Server supports both response formats:
-    // - responseformat=parquet: Simple format for Parquet tables {"protocol": {...}}
-    // - responseformat=delta: Wrapped format for Delta tables {"protocol": {"deltaProtocol": {...}}}
-    // Format is automatically selected based on table.format field
+    // Server capabilities advertised to clients via Delta-Sharing-Capabilities header
+    // Reference: https://github.com/delta-io/delta-sharing/blob/main/PROTOCOL.md#delta-sharing-capabilities-header
+    // 
+    // - responseformat=parquet: Server supports Parquet tables and Parquet response format
+    //   Format: {"protocol": {...}}, {"metaData": {...}}, {"file": {...}}
+    // 
+    // - responseformat=delta: Server supports Delta tables and Delta response format
+    //   Format: {"protocol": {"deltaProtocol": {...}}}, {"metaData": {"deltaMetadata": {...}}}, {"file": {"deltaSingleAction": {...}}}
+    // 
+    // Clients can specify their preferred format via query parameter: ?responseFormat=parquet or ?responseFormat=delta
     private static final String DELTA_SHARING_CAPABILITIES = "responseformat=parquet,delta";
     
     /**
@@ -251,13 +257,21 @@ public class DeltaSharingController {
             @PathVariable String schema,
             @Parameter(description = "Table name", required = true)
             @PathVariable String table,
+            @Parameter(description = "Response format: 'parquet' or 'delta'")
+            @RequestParam(required = false) String responseFormat,
             @Parameter(description = "Query parameters (optional)")
             @RequestBody(required = false) QueryTableRequest request) {
         
-        log.info("Delta Sharing API: Querying data for table: {}.{}.{}", share, schema, table);
+        log.info("Delta Sharing API: Querying data for table: {}.{}.{}, responseFormat: {}", 
+                 share, schema, table, responseFormat);
         
         if (request == null) {
             request = new QueryTableRequest();
+        }
+        
+        // Set responseFormat from query parameter if provided
+        if (responseFormat != null && !responseFormat.isEmpty()) {
+            request.setResponseFormat(responseFormat);
         }
         
         String response = deltaSharingService.queryTableData(share, schema, table, request);
