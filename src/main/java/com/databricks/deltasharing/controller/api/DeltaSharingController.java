@@ -179,7 +179,8 @@ public class DeltaSharingController {
      * 
      * Returns newline-delimited JSON (NDJSON) with protocol and metadata
      */
-    @GetMapping("/shares/{share}/schemas/{schema}/tables/{table}/metadata")
+    @GetMapping(value = "/shares/{share}/schemas/{schema}/tables/{table}/metadata", 
+                produces = "application/x-ndjson")
     @Operation(summary = "Query Table Metadata", 
                description = "Get metadata for a specific table (returns NDJSON format)")
     @ApiResponses(value = {
@@ -264,7 +265,8 @@ public class DeltaSharingController {
      * 
      * Returns newline-delimited JSON (NDJSON) with protocol, metadata, and file references
      */
-    @PostMapping("/shares/{share}/schemas/{schema}/tables/{table}/query")
+    @PostMapping(value = "/shares/{share}/schemas/{schema}/tables/{table}/query", 
+                 produces = "application/x-ndjson")
     @Operation(summary = "Query Table Data", 
                description = "Query table data files (returns NDJSON format with file references)")
     @ApiResponses(value = {

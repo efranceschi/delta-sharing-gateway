@@ -9,8 +9,8 @@ import com.databricks.deltasharing.repository.DeltaSchemaRepository;
 import com.databricks.deltasharing.repository.DeltaShareRepository;
 import com.databricks.deltasharing.repository.DeltaTableRepository;
 import com.databricks.deltasharing.service.storage.FileStorageService;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,7 +24,6 @@ import java.util.stream.Collectors;
  * Based on Delta Sharing Protocol specification
  */
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class DeltaSharingService {
     
@@ -34,6 +33,28 @@ public class DeltaSharingService {
     private final FileStorageService fileStorageService;
     private final PaginationService paginationService;
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
+    private final com.fasterxml.jackson.databind.ObjectMapper ndjsonObjectMapper;
+    
+    /**
+     * Constructor with dependency injection
+     * Uses @Qualifier to inject the correct ObjectMapper for NDJSON responses
+     */
+    public DeltaSharingService(
+            DeltaShareRepository shareRepository,
+            DeltaSchemaRepository schemaRepository,
+            DeltaTableRepository tableRepository,
+            FileStorageService fileStorageService,
+            PaginationService paginationService,
+            com.fasterxml.jackson.databind.ObjectMapper objectMapper,
+            @Qualifier("ndjsonObjectMapper") com.fasterxml.jackson.databind.ObjectMapper ndjsonObjectMapper) {
+        this.shareRepository = shareRepository;
+        this.schemaRepository = schemaRepository;
+        this.tableRepository = tableRepository;
+        this.fileStorageService = fileStorageService;
+        this.paginationService = paginationService;
+        this.objectMapper = objectMapper;
+        this.ndjsonObjectMapper = ndjsonObjectMapper;
+    }
     
     /**
      * List all shares
@@ -194,7 +215,7 @@ public class DeltaSharingService {
         ProtocolResponse protocol = ProtocolResponse.builder()
                 .minReaderVersion(1)
                 .build();
-        String protocolJson = String.format("{\"protocol\":%s}", toJson(protocol));
+        String protocolJson = String.format("{\"protocol\":%s}", toNdjson(protocol));
         response.append(protocolJson).append("\n");
         
         // Metadata line - Always use simple format for /metadata endpoint
@@ -205,6 +226,14 @@ public class DeltaSharingService {
         String[] partCols = fileStorageService.getPartitionColumns(table.getName());
         List<String> partitionColumns = Arrays.asList(partCols);
         
+        // Calculate table size and number of files
+        List<FileResponse> files = fileStorageService.getTableFiles(table, null, null, null);
+        long totalSize = files.stream()
+                .filter(f -> f.getSize() != null)
+                .mapToLong(FileResponse::getSize)
+                .sum();
+        long numFiles = files.size();
+        
         MetadataResponse metadata = MetadataResponse.builder()
                 .id(table.getUuid())
                 .format(FormatResponse.builder()
@@ -213,8 +242,10 @@ public class DeltaSharingService {
                 .schemaString(schemaString)
                 .partitionColumns(partitionColumns)
                 .configuration(new HashMap<>())
+                .size(totalSize)
+                .numFiles(numFiles)
                 .build();
-        String metadataJson = String.format("{\"metaData\":%s}", toJson(metadata));
+        String metadataJson = String.format("{\"metaData\":%s}", toNdjson(metadata));
         response.append(metadataJson).append("\n");
         
         // Add EndStreamAction if requested by client
@@ -228,7 +259,7 @@ public class DeltaSharingService {
                     .endStreamAction(action)
                     .build();
             
-            String endStreamJson = toJson(wrapper);
+            String endStreamJson = toNdjson(wrapper);
             response.append(endStreamJson).append("\n");
             
             log.debug("Added EndStreamAction to metadata response");
@@ -317,10 +348,10 @@ public class DeltaSharingService {
             DeltaProtocolWrapper wrapper = DeltaProtocolWrapper.builder()
                     .deltaProtocol(protocol)
                     .build();
-            protocolJson = String.format("{\"protocol\":%s}", toJson(wrapper));
+            protocolJson = String.format("{\"protocol\":%s}", toNdjson(wrapper));
         } else {
             // Parquet format: {"protocol": {...}}
-            protocolJson = String.format("{\"protocol\":%s}", toJson(protocol));
+            protocolJson = String.format("{\"protocol\":%s}", toNdjson(protocol));
         }
         response.append(protocolJson).append("\n");
         
@@ -348,10 +379,10 @@ public class DeltaSharingService {
             DeltaMetadataWrapper wrapper = DeltaMetadataWrapper.builder()
                     .deltaMetadata(metadata)
                     .build();
-            metadataJson = String.format("{\"metaData\":%s}", toJson(wrapper));
+            metadataJson = String.format("{\"metaData\":%s}", toNdjson(wrapper));
         } else {
             // Parquet format: {"metaData": {...}}
-            metadataJson = String.format("{\"metaData\":%s}", toJson(metadata));
+            metadataJson = String.format("{\"metaData\":%s}", toNdjson(metadata));
         }
         response.append(metadataJson).append("\n");
         
@@ -372,10 +403,10 @@ public class DeltaSharingService {
                 DeltaSingleActionWrapper wrapper = DeltaSingleActionWrapper.builder()
                         .deltaSingleAction(file)
                         .build();
-                fileJson = String.format("{\"file\":%s}", toJson(wrapper));
+                fileJson = String.format("{\"file\":%s}", toNdjson(wrapper));
             } else {
                 // Parquet format: {"file": {...}}
-                fileJson = String.format("{\"file\":%s}", toJson(file));
+                fileJson = String.format("{\"file\":%s}", toNdjson(file));
             }
             response.append(fileJson).append("\n");
             
@@ -402,7 +433,7 @@ public class DeltaSharingService {
                     .endStreamAction(action)
                     .build();
             
-            String endStreamJson = toJson(wrapper);
+            String endStreamJson = toNdjson(wrapper);
             response.append(endStreamJson).append("\n");
             
             log.debug("Added EndStreamAction to response with minUrlExpirationTimestamp: {} (REQUIRED by client)", 
@@ -464,7 +495,7 @@ public class DeltaSharingService {
         ProtocolResponse protocol = ProtocolResponse.builder()
                 .minReaderVersion(1)
                 .build();
-        String protocolJson = String.format("{\"protocol\":%s}", toJson(protocol));
+        String protocolJson = String.format("{\"protocol\":%s}", toNdjson(protocol));
         response.append(protocolJson).append("\n");
         
         // Metadata line
@@ -481,12 +512,12 @@ public class DeltaSharingService {
                 .schemaString(schemaString)
                 .partitionColumns(partitionColumns)
                 .build();
-        String metadataJson = String.format("{\"metaData\":%s}", toJson(metadata));
+        String metadataJson = String.format("{\"metaData\":%s}", toNdjson(metadata));
         response.append(metadataJson).append("\n");
         
         // Add change entries
         for (FileResponse change : changes) {
-            String changeJson = String.format("{\"file\":%s}", toJson(change));
+            String changeJson = String.format("{\"file\":%s}", toNdjson(change));
             response.append(changeJson).append("\n");
         }
         
@@ -545,13 +576,36 @@ public class DeltaSharingService {
     
     /**
      * Convert object to JSON string with pretty printing (2 spaces indentation)
+     * Reserved for future use in regular JSON responses (GET /shares, GET /schemas, etc.)
+     * 
+     * Note: Currently, regular JSON endpoints (GET /shares, etc.) use Spring's automatic
+     * serialization via @RestController, which uses the @Primary ObjectMapper bean.
+     * This method is kept for potential future manual JSON serialization needs.
+     * 
      * Uses configured ObjectMapper with INDENT_OUTPUT enabled
      */
+    @SuppressWarnings("unused")
     private String toJson(Object obj) {
         try {
             return objectMapper.writeValueAsString(obj);
         } catch (Exception e) {
             log.error("Error converting to JSON: {}", e.getMessage(), e);
+            return "{}";
+        }
+    }
+    
+    /**
+     * Convert object to compact JSON string (NO pretty printing)
+     * Used for NDJSON responses (POST /query, GET /metadata, GET /changes)
+     * 
+     * NDJSON (Newline-Delimited JSON) requires each line to be a complete, compact JSON object
+     * Example: {"protocol":{"minReaderVersion":1}}
+     */
+    private String toNdjson(Object obj) {
+        try {
+            return ndjsonObjectMapper.writeValueAsString(obj);
+        } catch (Exception e) {
+            log.error("Error converting to NDJSON: {}", e.getMessage(), e);
             return "{}";
         }
     }
