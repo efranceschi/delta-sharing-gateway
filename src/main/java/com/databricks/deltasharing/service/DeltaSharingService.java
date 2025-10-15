@@ -174,7 +174,7 @@ public class DeltaSharingService {
      * Endpoint: GET /shares/{share}/schemas/{schema}/tables/{table}/metadata
      */
     @Transactional(readOnly = true)
-    public String queryTableMetadata(String shareName, String schemaName, String tableName) {
+    public String queryTableMetadata(String shareName, String schemaName, String tableName, QueryTableRequest request) {
         log.debug("Querying metadata for table: {}.{}.{}", shareName, schemaName, tableName);
         
         verifyShareIsActive(shareName);
@@ -215,6 +215,18 @@ public class DeltaSharingService {
                 .build();
         String metadataJson = String.format("{\"metaData\":%s}", toJson(metadata));
         response.append(metadataJson).append("\n");
+        
+        // Add EndStreamAction if requested by client
+        if (request != null && Boolean.TRUE.equals(request.getIncludeEndStreamAction())) {
+            EndStreamAction endStreamAction = EndStreamAction.builder()
+                    .refreshToken(generateRefreshToken(shareName, schemaName, tableName))
+                    .build();
+            
+            String endStreamJson = toJson(endStreamAction);
+            response.append(endStreamJson).append("\n");
+            
+            log.debug("Added EndStreamAction to metadata response");
+        }
         
         // Debug: Log the full response for troubleshooting
         String fullResponse = response.toString();
@@ -346,6 +358,7 @@ public class DeltaSharingService {
         );
         
         // Add file lines to response
+        Long minExpirationTimestamp = null;
         for (FileResponse file : files) {
             String fileJson;
             if (useDeltaFormat) {
@@ -359,11 +372,43 @@ public class DeltaSharingService {
                 fileJson = String.format("{\"file\":%s}", toJson(file));
             }
             response.append(fileJson).append("\n");
+            
+            // Track minimum expiration timestamp across all files
+            if (file.getExpirationTimestamp() != null) {
+                if (minExpirationTimestamp == null || file.getExpirationTimestamp() < minExpirationTimestamp) {
+                    minExpirationTimestamp = file.getExpirationTimestamp();
+                }
+            }
+        }
+        
+        // Add EndStreamAction if requested by client
+        // Reference: https://github.com/delta-io/delta-sharing/blob/main/PROTOCOL.md#endstreamaction
+        if (Boolean.TRUE.equals(request.getIncludeEndStreamAction())) {
+            EndStreamAction endStreamAction = EndStreamAction.builder()
+                    .refreshToken(generateRefreshToken(shareName, schemaName, tableName))
+                    .minUrlExpirationTimestamp(minExpirationTimestamp)
+                    .build();
+            
+            String endStreamJson = toJson(endStreamAction);
+            response.append(endStreamJson).append("\n");
+            
+            log.debug("Added EndStreamAction to response with minUrlExpirationTimestamp: {}", minExpirationTimestamp);
         }
         
         log.info("Returning {} files for table: {}.{}.{}", files.size(), shareName, schemaName, tableName);
         
         return response.toString();
+    }
+    
+    /**
+     * Generate a refresh token for the client to refresh pre-signed URLs
+     * The token should encode the table information and be verifiable by the server
+     */
+    private String generateRefreshToken(String shareName, String schemaName, String tableName) {
+        // Create a simple token encoding the table path
+        // In production, this should be encrypted/signed for security
+        String tokenData = String.format("%s:%s:%s:%d", shareName, schemaName, tableName, System.currentTimeMillis());
+        return java.util.Base64.getEncoder().encodeToString(tokenData.getBytes());
     }
     
     /**

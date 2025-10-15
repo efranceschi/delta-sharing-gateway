@@ -192,16 +192,30 @@ public class DeltaSharingController {
             @Parameter(description = "Schema name", required = true)
             @PathVariable String schema,
             @Parameter(description = "Table name", required = true)
-            @PathVariable String table) {
+            @PathVariable String table,
+            @Parameter(description = "Delta Sharing Capabilities header")
+            @RequestHeader(value = "delta-sharing-capabilities", required = false) String capabilitiesHeader) {
         
-        log.info("Delta Sharing API: Querying metadata for table: {}.{}.{}", share, schema, table);
-        String response = deltaSharingService.queryTableMetadata(share, schema, table);
+        log.info("Delta Sharing API: Querying metadata for table: {}.{}.{}, capabilities: {}", 
+                 share, schema, table, capabilitiesHeader);
         
-        return ResponseEntity.ok()
+        QueryTableRequest request = new QueryTableRequest();
+        parseCapabilitiesHeader(capabilitiesHeader, request);
+        
+        String response = deltaSharingService.queryTableMetadata(share, schema, table, request);
+        
+        // Build response headers
+        ResponseEntity.BodyBuilder responseBuilder = ResponseEntity.ok()
                 .header("Delta-Sharing-Capabilities", DELTA_SHARING_CAPABILITIES)
                 .header("Delta-Table-Version", "1")
-                .contentType(MediaType.parseMediaType("application/x-ndjson"))
-                .body(response);
+                .contentType(MediaType.parseMediaType("application/x-ndjson"));
+        
+        // Add includeEndStreamAction header if requested
+        if (Boolean.TRUE.equals(request.getIncludeEndStreamAction())) {
+            responseBuilder.header("includeEndStreamAction", "true");
+        }
+        
+        return responseBuilder.body(response);
     }
     
     /**
@@ -259,28 +273,74 @@ public class DeltaSharingController {
             @PathVariable String table,
             @Parameter(description = "Response format: 'parquet' or 'delta'")
             @RequestParam(required = false) String responseFormat,
+            @Parameter(description = "Delta Sharing Capabilities header")
+            @RequestHeader(value = "delta-sharing-capabilities", required = false) String capabilitiesHeader,
             @Parameter(description = "Query parameters (optional)")
             @RequestBody(required = false) QueryTableRequest request) {
         
-        log.info("Delta Sharing API: Querying data for table: {}.{}.{}, responseFormat: {}", 
-                 share, schema, table, responseFormat);
+        log.info("Delta Sharing API: Querying data for table: {}.{}.{}, responseFormat: {}, capabilities: {}", 
+                 share, schema, table, responseFormat, capabilitiesHeader);
         
         if (request == null) {
             request = new QueryTableRequest();
         }
         
-        // Set responseFormat from query parameter if provided
+        // Parse capabilities header
+        parseCapabilitiesHeader(capabilitiesHeader, request);
+        
+        // Set responseFormat from query parameter if provided (takes precedence)
         if (responseFormat != null && !responseFormat.isEmpty()) {
             request.setResponseFormat(responseFormat);
         }
         
         String response = deltaSharingService.queryTableData(share, schema, table, request);
         
-        return ResponseEntity.ok()
+        // Build response headers
+        ResponseEntity.BodyBuilder responseBuilder = ResponseEntity.ok()
                 .header("Delta-Sharing-Capabilities", DELTA_SHARING_CAPABILITIES)
                 .header("Delta-Table-Version", "1")
-                .contentType(MediaType.parseMediaType("application/x-ndjson"))
-                .body(response);
+                .contentType(MediaType.parseMediaType("application/x-ndjson"));
+        
+        // Add includeEndStreamAction header if requested
+        if (Boolean.TRUE.equals(request.getIncludeEndStreamAction())) {
+            responseBuilder.header("includeEndStreamAction", "true");
+        }
+        
+        return responseBuilder.body(response);
+    }
+    
+    /**
+     * Parse Delta Sharing Capabilities header
+     * Format: "responseformat=delta;includeEndStreamAction=true;readerfeatures=deletionvectors,columnmapping"
+     */
+    private void parseCapabilitiesHeader(String capabilitiesHeader, QueryTableRequest request) {
+        if (capabilitiesHeader == null || capabilitiesHeader.isEmpty()) {
+            return;
+        }
+        
+        // Split by semicolon
+        String[] capabilities = capabilitiesHeader.split(";");
+        for (String capability : capabilities) {
+            String[] parts = capability.trim().split("=", 2);
+            if (parts.length == 2) {
+                String key = parts[0].trim().toLowerCase();
+                String value = parts[1].trim().toLowerCase();
+                
+                switch (key) {
+                    case "responseformat":
+                        // Take first value if multiple provided
+                        String format = value.split(",")[0].trim();
+                        if (request.getResponseFormat() == null) {
+                            request.setResponseFormat(format);
+                        }
+                        break;
+                    case "includeendstreamaction":
+                        request.setIncludeEndStreamAction("true".equals(value));
+                        break;
+                    // Future: handle readerfeatures
+                }
+            }
+        }
     }
     
     /**

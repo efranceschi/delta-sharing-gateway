@@ -65,4 +65,11 @@ public class QueryTableRequest {
      * Reference: https://github.com/delta-io/delta-sharing/blob/main/PROTOCOL.md#delta-sharing-capabilities-header
      */
     private String responseFormat;
+    
+    /**
+     * Whether to include EndStreamAction at the end of the response
+     * When true, server must include EndStreamAction with refreshToken and minUrlExpirationTimestamp
+     * Reference: https://github.com/delta-io/delta-sharing/blob/main/PROTOCOL.md#includeendstreamaction
+     */
+    private Boolean includeEndStreamAction;
 }
