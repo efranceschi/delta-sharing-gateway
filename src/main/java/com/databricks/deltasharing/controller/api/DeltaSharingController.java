@@ -194,13 +194,20 @@ public class DeltaSharingController {
             @Parameter(description = "Table name", required = true)
             @PathVariable String table,
             @Parameter(description = "Delta Sharing Capabilities header")
-            @RequestHeader(value = "delta-sharing-capabilities", required = false) String capabilitiesHeader) {
+            @RequestHeader(value = "delta-sharing-capabilities", required = false) String capabilitiesHeader,
+            @Parameter(description = "Include End Stream Action header")
+            @RequestHeader(value = "includeEndStreamAction", required = false) String includeEndStreamActionHeader) {
         
-        log.info("Delta Sharing API: Querying metadata for table: {}.{}.{}, capabilities: {}", 
-                 share, schema, table, capabilitiesHeader);
+        log.info("Delta Sharing API: Querying metadata for table: {}.{}.{}, capabilities: {}, includeEndStreamAction: {}", 
+                 share, schema, table, capabilitiesHeader, includeEndStreamActionHeader);
         
         QueryTableRequest request = new QueryTableRequest();
         parseCapabilitiesHeader(capabilitiesHeader, request);
+        
+        // Check for standalone includeEndStreamAction header
+        if (includeEndStreamActionHeader != null && !includeEndStreamActionHeader.isEmpty()) {
+            request.setIncludeEndStreamAction("true".equalsIgnoreCase(includeEndStreamActionHeader));
+        }
         
         String response = deltaSharingService.queryTableMetadata(share, schema, table, request);
         
@@ -275,18 +282,26 @@ public class DeltaSharingController {
             @RequestParam(required = false) String responseFormat,
             @Parameter(description = "Delta Sharing Capabilities header")
             @RequestHeader(value = "delta-sharing-capabilities", required = false) String capabilitiesHeader,
+            @Parameter(description = "Include End Stream Action header")
+            @RequestHeader(value = "includeEndStreamAction", required = false) String includeEndStreamActionHeader,
             @Parameter(description = "Query parameters (optional)")
             @RequestBody(required = false) QueryTableRequest request) {
         
-        log.info("Delta Sharing API: Querying data for table: {}.{}.{}, responseFormat: {}, capabilities: {}", 
-                 share, schema, table, responseFormat, capabilitiesHeader);
+        log.info("Delta Sharing API: Querying data for table: {}.{}.{}, responseFormat: {}, capabilities: {}, includeEndStreamAction: {}", 
+                 share, schema, table, responseFormat, capabilitiesHeader, includeEndStreamActionHeader);
         
         if (request == null) {
             request = new QueryTableRequest();
         }
         
-        // Parse capabilities header
+        // Parse capabilities header (includeEndStreamAction can be here)
         parseCapabilitiesHeader(capabilitiesHeader, request);
+        
+        // Check for standalone includeEndStreamAction header (Databricks client sends this)
+        // This takes precedence over capabilities header
+        if (includeEndStreamActionHeader != null && !includeEndStreamActionHeader.isEmpty()) {
+            request.setIncludeEndStreamAction("true".equalsIgnoreCase(includeEndStreamActionHeader));
+        }
         
         // Set responseFormat from query parameter if provided (takes precedence)
         if (responseFormat != null && !responseFormat.isEmpty()) {

@@ -383,6 +383,8 @@ public class DeltaSharingService {
         
         // Add EndStreamAction if requested by client
         // Reference: https://github.com/delta-io/delta-sharing/blob/main/PROTOCOL.md#endstreamaction
+        // When includeEndStreamAction=true, the server MUST include EndStreamAction in the response
+        // The client will throw an exception if it's missing
         if (Boolean.TRUE.equals(request.getIncludeEndStreamAction())) {
             EndStreamAction endStreamAction = EndStreamAction.builder()
                     .refreshToken(generateRefreshToken(shareName, schemaName, tableName))
@@ -392,7 +394,10 @@ public class DeltaSharingService {
             String endStreamJson = toJson(endStreamAction);
             response.append(endStreamJson).append("\n");
             
-            log.debug("Added EndStreamAction to response with minUrlExpirationTimestamp: {}", minExpirationTimestamp);
+            log.debug("Added EndStreamAction to response with minUrlExpirationTimestamp: {} (REQUIRED by client)", 
+                     minExpirationTimestamp);
+        } else {
+            log.debug("EndStreamAction not requested by client, skipping");
         }
         
         log.info("Returning {} files for table: {}.{}.{}", files.size(), shareName, schemaName, tableName);
