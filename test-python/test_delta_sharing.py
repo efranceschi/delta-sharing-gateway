@@ -397,9 +397,6 @@ def http_get(url, headers=None):
     """Wrapper for HTTP GET with debug logging"""
     import requests
     
-    if DEBUG:
-        debug_http_request("GET", url, headers=headers)
-    
     response = requests.get(url, headers=headers)
     
     if DEBUG:
@@ -410,9 +407,6 @@ def http_get(url, headers=None):
 def http_post(url, headers=None, json_data=None):
     """Wrapper for HTTP POST with debug logging"""
     import requests
-    
-    if DEBUG:
-        debug_http_request("POST", url, headers=headers, json_data=json_data)
     
     response = requests.post(url, headers=headers, json=json_data)
     
@@ -1094,20 +1088,49 @@ def test_direct_api():
         "Content-Type": "application/json"
     }
     
-    # Dynamically discover first share and schema
+    # Dynamically discover first share and schema from the server
+    # IMPORTANT: We ALWAYS get resources dynamically - never use hardcoded values
+    # This ensures we only test with resources that actually exist on the server
+    first_share = None
+    first_schema = None
+    first_table = None
+    
     try:
         shares_response = http_get(f"{BASE_URL}/shares", headers=headers)
-        first_share = shares_response.json()['items'][0]['name'] if shares_response.status_code == 200 else 'analytics-share'
+        if shares_response.status_code == 200 and 'items' in shares_response.json() and len(shares_response.json()['items']) > 0:
+            first_share = shares_response.json()['items'][0]['name']
+        else:
+            print(f"{Colors.YELLOW}⚠️  No shares found on server - skipping tests that require shares{Colors.RESET}")
+            duration = time.time() - start_time
+            print(f"\n{Colors.DIM}⏱️  Duration: {format_duration(duration)}{Colors.RESET}")
+            add_test_result("TEST 8: Direct REST API Calls", False, "No shares available on server", duration)
+            return
         
         schemas_response = http_get(f"{BASE_URL}/shares/{first_share}/schemas", headers=headers)
-        first_schema = schemas_response.json()['items'][0]['name'] if schemas_response.status_code == 200 else 'default'
+        if schemas_response.status_code == 200 and 'items' in schemas_response.json() and len(schemas_response.json()['items']) > 0:
+            first_schema = schemas_response.json()['items'][0]['name']
+        else:
+            print(f"{Colors.YELLOW}⚠️  No schemas found in share '{first_share}' - skipping tests that require schemas{Colors.RESET}")
+            duration = time.time() - start_time
+            print(f"\n{Colors.DIM}⏱️  Duration: {format_duration(duration)}{Colors.RESET}")
+            add_test_result("TEST 8: Direct REST API Calls", False, f"No schemas available in share '{first_share}'", duration)
+            return
         
         tables_response = http_get(f"{BASE_URL}/shares/{first_share}/schemas/{first_schema}/tables", headers=headers)
-        first_table = tables_response.json()['items'][0]['name'] if tables_response.status_code == 200 else 'test'
-    except:
-        first_share = 'analytics-share'
-        first_schema = 'default'
-        first_table = 'test'
+        if tables_response.status_code == 200 and 'items' in tables_response.json() and len(tables_response.json()['items']) > 0:
+            first_table = tables_response.json()['items'][0]['name']
+        else:
+            print(f"{Colors.YELLOW}⚠️  No tables found in schema '{first_share}.{first_schema}' - skipping tests that require tables{Colors.RESET}")
+            duration = time.time() - start_time
+            print(f"\n{Colors.DIM}⏱️  Duration: {format_duration(duration)}{Colors.RESET}")
+            add_test_result("TEST 8: Direct REST API Calls", False, f"No tables available in schema '{first_share}.{first_schema}'", duration)
+            return
+    except Exception as e:
+        print(f"{Colors.RED}❌ Error discovering resources: {e}{Colors.RESET}")
+        duration = time.time() - start_time
+        print(f"\n{Colors.DIM}⏱️  Duration: {format_duration(duration)}{Colors.RESET}")
+        add_test_result("TEST 8: Direct REST API Calls", False, f"Failed to discover resources: {str(e)}", duration)
+        return
     
     tests = [
         ("GET /shares", f"{BASE_URL}/shares", "GET"),
@@ -1196,17 +1219,35 @@ def _test_data_skipping_impl():
         "Content-Type": "application/json"
     }
     
-    # Dynamically discover resources
+    # Dynamically discover resources from the server
+    # IMPORTANT: We ALWAYS get resources dynamically - never use hardcoded values
+    # This ensures we only test with resources that actually exist on the server
     print(f"{Colors.BRIGHT_BLUE}📋 Discovering resources...{Colors.RESET}")
+    share = None
+    schema = None
+    table = None
+    
     try:
         shares_response = http_get(f"{BASE_URL}/shares", headers=headers)
-        share = shares_response.json()['items'][0]['name'] if shares_response.status_code == 200 else 'analytics-share'
+        if shares_response.status_code == 200 and 'items' in shares_response.json() and len(shares_response.json()['items']) > 0:
+            share = shares_response.json()['items'][0]['name']
+        else:
+            print(f"{Colors.YELLOW}⚠️  No shares found on server - cannot test data skipping{Colors.RESET}")
+            return
         
         schemas_response = http_get(f"{BASE_URL}/shares/{share}/schemas", headers=headers)
-        schema = schemas_response.json()['items'][0]['name'] if schemas_response.status_code == 200 else 'default'
+        if schemas_response.status_code == 200 and 'items' in schemas_response.json() and len(schemas_response.json()['items']) > 0:
+            schema = schemas_response.json()['items'][0]['name']
+        else:
+            print(f"{Colors.YELLOW}⚠️  No schemas found in share '{share}' - cannot test data skipping{Colors.RESET}")
+            return
         
         tables_response = http_get(f"{BASE_URL}/shares/{share}/schemas/{schema}/tables", headers=headers)
-        table = tables_response.json()['items'][0]['name'] if tables_response.status_code == 200 else 'test'
+        if tables_response.status_code == 200 and 'items' in tables_response.json() and len(tables_response.json()['items']) > 0:
+            table = tables_response.json()['items'][0]['name']
+        else:
+            print(f"{Colors.YELLOW}⚠️  No tables found in schema '{share}.{schema}' - cannot test data skipping{Colors.RESET}")
+            return
         
         print(f"{Colors.GREEN}✅ Share:{Colors.RESET} {share}")
         print(f"{Colors.GREEN}✅ Schema:{Colors.RESET} {schema}")
