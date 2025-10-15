@@ -9,9 +9,23 @@ import lombok.NoArgsConstructor;
 /**
  * Wrapper for Delta Single Action when responseformat=delta
  * Based on Delta Sharing Protocol specification
- * https://github.com/delta-io/delta-sharing/blob/main/PROTOCOL.md#delta-sharing-capabilities-header
+ * https://github.com/delta-io/delta-sharing/blob/main/PROTOCOL.md
  * 
- * Format: {"file": {"deltaSingleAction": {...}}}
+ * Format according to protocol:
+ * {
+ *   "file": {
+ *     "id": "...",
+ *     "size": 573,
+ *     "expirationTimestamp": 1652140800000,
+ *     "deltaSingleAction": {
+ *       "add": {
+ *         "path": "https://...",
+ *         "partitionValues": {...},
+ *         "stats": "{\"numRecords\":1,...}"
+ *       }
+ *     }
+ *   }
+ * }
  */
 @Data
 @Builder
@@ -21,8 +35,23 @@ import lombok.NoArgsConstructor;
 public class DeltaSingleActionWrapper {
     
     /**
-     * Wrapped delta single action (file) object
+     * Unique identifier for the file
      */
-    private FileResponse deltaSingleAction;
+    private String id;
+    
+    /**
+     * File size in bytes
+     */
+    private Long size;
+    
+    /**
+     * Expiration timestamp for the URL
+     */
+    private Long expirationTimestamp;
+    
+    /**
+     * The delta single action containing the "add" action
+     */
+    private DeltaSingleAction deltaSingleAction;
 }
 

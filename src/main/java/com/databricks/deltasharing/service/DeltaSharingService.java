@@ -459,10 +459,39 @@ public class DeltaSharingService {
         for (FileResponse file : files) {
             String fileJson;
             if (useDeltaFormat) {
-                // Delta format: {"file": {"deltaSingleAction": {...}}}
-                DeltaSingleActionWrapper wrapper = DeltaSingleActionWrapper.builder()
-                        .deltaSingleAction(file)
+                // Delta format: {"file": {"id": "...", "size": ..., "expirationTimestamp": ..., "deltaSingleAction": {"add": {...}}}}
+                // Reference: https://github.com/delta-io/delta-sharing/blob/main/PROTOCOL.md
+                
+                // Convert stats from Map to JSON String
+                String statsJson = null;
+                if (file.getStats() != null) {
+                    try {
+                        statsJson = ndjsonObjectMapper.writeValueAsString(file.getStats());
+                    } catch (Exception e) {
+                        log.warn("Failed to serialize stats for file {}: {}", file.getId(), e.getMessage());
+                    }
+                }
+                
+                // Build the add action
+                DeltaAddAction addAction = DeltaAddAction.builder()
+                        .path(file.getUrl())  // URL goes in path field
+                        .partitionValues(file.getPartitionValues())
+                        .stats(statsJson)  // stats as JSON STRING
                         .build();
+                
+                // Build the deltaSingleAction
+                DeltaSingleAction singleAction = DeltaSingleAction.builder()
+                        .add(addAction)
+                        .build();
+                
+                // Build the wrapper with id, size, expirationTimestamp at file level
+                DeltaSingleActionWrapper wrapper = DeltaSingleActionWrapper.builder()
+                        .id(file.getId())
+                        .size(file.getSize())
+                        .expirationTimestamp(file.getExpirationTimestamp())
+                        .deltaSingleAction(singleAction)
+                        .build();
+                
                 fileJson = String.format("{\"file\":%s}", toNdjson(wrapper));
             } else {
                 // Parquet format: {"file": {...}}
