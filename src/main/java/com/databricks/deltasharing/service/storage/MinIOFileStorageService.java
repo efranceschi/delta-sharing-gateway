@@ -9,8 +9,11 @@ import com.databricks.deltasharing.service.delta.DeltaLogReader;
 import com.databricks.deltasharing.service.parquet.ParquetSchemaReader;
 import io.minio.GetObjectArgs;
 import io.minio.GetPresignedObjectUrlArgs;
+import io.minio.ListObjectsArgs;
 import io.minio.MinioClient;
+import io.minio.Result;
 import io.minio.http.Method;
+import io.minio.messages.Item;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -202,8 +205,8 @@ public class MinIOFileStorageService implements FileStorageService {
             }
         }
         
-        // Fallback: list files directly from MinIO (legacy mode, no data skipping)
-        log.info("Using legacy mode (no Delta log) for table: {}", table.getName());
+        // Fallback: list files directly from MinIO (legacy mode for Parquet tables)
+        log.info("Falling back to legacy mode (direct listing) for table: {}", table.getName());
         return getTableFilesLegacy(table, version, limitHint);
     }
     
@@ -310,16 +313,150 @@ public class MinIOFileStorageService implements FileStorageService {
     
     /**
      * Legacy method: list files directly from MinIO without Delta log
+     * Used for Parquet tables that don't have Delta transaction logs
      * Does NOT support data skipping (predicates are ignored)
      * 
-     * @deprecated This method is deprecated and always returns an empty list.
-     *             Use Delta transaction log instead (getTableFilesFromDeltaLog)
+     * This method:
+     * - Lists all .parquet files in the table location recursively
+     * - Generates pre-signed URLs for each file
+     * - Applies limitHint to restrict number of files
+     * - Does NOT filter by predicates (data skipping not supported)
+     * 
+     * @param table DeltaTable entity with location
+     * @param version Version parameter (ignored in legacy mode)
+     * @param limitHint Maximum number of files to return
+     * @return List of FileResponse objects with pre-signed URLs
      */
-    @Deprecated
     private List<FileResponse> getTableFilesLegacy(DeltaTable table, Long version, Integer limitHint) {
-        log.error("Legacy mode is deprecated. Please ensure Delta transaction log is available for table: {} at {}",
+        log.info("Using legacy mode (direct MinIO listing) for table: {} at {}", 
                 table.getName(), table.getLocation());
-        return new ArrayList<>();
+        
+        if (log.isDebugEnabled()) {
+            log.debug("Legacy mode (Parquet): Listing files directly from MinIO");
+            log.debug("  Table: {}.{}.{}", 
+                     table.getSchema().getShare().getName(), 
+                     table.getSchema().getName(), 
+                     table.getName());
+            log.debug("  Location: {}", table.getLocation());
+            log.debug("  Limit hint: {}", limitHint != null ? limitHint : "unlimited");
+            log.debug("  Note: Data skipping NOT supported in legacy mode");
+        }
+        
+        try {
+            S3Location s3Location = resolveTableLocation(table);
+            List<FileResponse> fileResponses = new ArrayList<>();
+            
+            // List all objects recursively in the table path
+            Iterable<Result<Item>> results = minioClient.listObjects(
+                    ListObjectsArgs.builder()
+                            .bucket(s3Location.bucket)
+                            .prefix(s3Location.path)
+                            .recursive(true)
+                            .build()
+            );
+            
+            int fileCount = 0;
+            int limit = limitHint != null && limitHint > 0 ? limitHint : Integer.MAX_VALUE;
+            
+            for (Result<Item> result : results) {
+                if (fileCount >= limit) {
+                    if (log.isDebugEnabled()) {
+                        log.debug("Reached limit hint of {} files, stopping listing", limit);
+                    }
+                    break;
+                }
+                
+                try {
+                    Item item = result.get();
+                    String objectName = item.objectName();
+                    
+                    // Only include .parquet files, skip directories and Delta log files
+                    if (objectName.endsWith(".parquet") && !objectName.contains("_delta_log/")) {
+                        
+                        if (log.isDebugEnabled()) {
+                            log.debug("Found Parquet file: {} (size: {} bytes)", 
+                                     objectName, item.size());
+                        }
+                        
+                        // Generate pre-signed URL
+                        String presignedUrl = minioClient.getPresignedObjectUrl(
+                                GetPresignedObjectUrlArgs.builder()
+                                        .method(Method.GET)
+                                        .bucket(s3Location.bucket)
+                                        .object(objectName)
+                                        .expiry(urlExpirationMinutes, TimeUnit.MINUTES)
+                                        .build()
+                        );
+                        
+                        // Extract relative path for file ID
+                        String relativePath = objectName.substring(s3Location.path.length());
+                        String fileId = relativePath.replace("/", "-").replace(".parquet", "");
+                        
+                        long expirationTimestamp = System.currentTimeMillis() + 
+                                                  TimeUnit.MINUTES.toMillis(urlExpirationMinutes);
+                        
+                        FileResponse fileResponse = FileResponse.builder()
+                                .url(presignedUrl)
+                                .id(fileId)
+                                .partitionValues(new HashMap<>()) // No partition info in legacy mode
+                                .size(item.size())
+                                .stats(null) // No stats in legacy mode
+                                .version(version != null ? version : 0L)
+                                .timestamp(item.lastModified() != null ? 
+                                          item.lastModified().toInstant().toEpochMilli() : 
+                                          System.currentTimeMillis())
+                                .expirationTimestamp(expirationTimestamp)
+                                .build();
+                        
+                        fileResponses.add(fileResponse);
+                        fileCount++;
+                        
+                        if (log.isDebugEnabled()) {
+                            log.debug("Generated pre-signed URL for: {} (expires in {} min)", 
+                                     relativePath, urlExpirationMinutes);
+                        }
+                    }
+                } catch (Exception e) {
+                    log.warn("Error processing file listing result: {}", e.getMessage());
+                    log.debug("File listing error details", e);
+                }
+            }
+            
+            log.info("Legacy mode: Returning {} Parquet files from {}", 
+                    fileResponses.size(), s3Location);
+            
+            if (log.isDebugEnabled() && !fileResponses.isEmpty()) {
+                long totalSize = fileResponses.stream()
+                        .filter(f -> f.getSize() != null)
+                        .mapToLong(FileResponse::getSize)
+                        .sum();
+                
+                log.debug("Legacy mode summary:");
+                log.debug("  Total files: {}", fileResponses.size());
+                log.debug("  Total size: {} bytes ({} MB)", totalSize, totalSize / 1024 / 1024);
+                log.debug("  Bucket: {}", s3Location.bucket);
+                log.debug("  Path: {}", s3Location.path);
+                
+                // Log first few files
+                int maxToLog = Math.min(3, fileResponses.size());
+                for (int i = 0; i < maxToLog; i++) {
+                    FileResponse file = fileResponses.get(i);
+                    log.debug("  File {}: {} (size: {} bytes)", 
+                             i + 1, file.getId(), file.getSize() != null ? file.getSize() : "unknown");
+                }
+                
+                if (fileResponses.size() > maxToLog) {
+                    log.debug("  ... and {} more files", fileResponses.size() - maxToLog);
+                }
+            }
+            
+            return fileResponses;
+            
+        } catch (Exception e) {
+            log.error("Failed to list files in legacy mode for table: {} at {}", 
+                     table.getName(), table.getLocation(), e);
+            return new ArrayList<>();
+        }
     }
     
     /**
