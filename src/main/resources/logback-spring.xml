@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    
+    <!-- Propriedades para colorização -->
+    <conversionRule conversionWord="clr" converterClass="org.springframework.boot.logging.logback.ColorConverter" />
+    <conversionRule conversionWord="wex" converterClass="org.springframework.boot.logging.logback.WhitespaceThrowableProxyConverter" />
+    <conversionRule conversionWord="wEx" converterClass="org.springframework.boot.logging.logback.ExtendedWhitespaceThrowableProxyConverter" />
+    
+    <!-- Padrão de log para CONSOLE com cores e informações detalhadas -->
+    <property name="CONSOLE_LOG_PATTERN" 
+              value="%clr(%d{yyyy-MM-dd HH:mm:ss.SSS}){faint} %clr([%thread]){magenta} %clr(%-5level){highlight} %clr(%logger{36}){cyan} %clr(:){faint} %m%n%wEx"/>
+    
+    <!-- Padrão de log para ARQUIVO sem cores -->
+    <property name="FILE_LOG_PATTERN" 
+              value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} : %m%n%wEx"/>
+    
+    <!-- Appender para CONSOLE -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${CONSOLE_LOG_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+    
+    <!-- Appender para ARQUIVO (opcional) -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/delta-sharing.log</file>
+        <encoder>
+            <pattern>${FILE_LOG_PATTERN}</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>logs/delta-sharing.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>1GB</totalSizeCap>
+        </rollingPolicy>
+    </appender>
+    
+    <!-- Profile DEV -->
+    <springProfile name="dev">
+        <!-- Loggers específicos para Delta Sharing -->
+        <logger name="com.databricks.deltasharing" level="DEBUG" additivity="false">
+            <appender-ref ref="CONSOLE" />
+            <appender-ref ref="FILE" />
+        </logger>
+        
+        <!-- Spring Framework -->
+        <logger name="org.springframework.web" level="INFO" />
+        <logger name="org.springframework.security" level="INFO" />
+        <logger name="org.hibernate" level="INFO" />
+        
+        <!-- Root logger -->
+        <root level="INFO">
+            <appender-ref ref="CONSOLE" />
+            <appender-ref ref="FILE" />
+        </root>
+    </springProfile>
+    
+    <!-- Profile PROD -->
+    <springProfile name="prod">
+        <!-- Loggers específicos para Delta Sharing -->
+        <logger name="com.databricks.deltasharing" level="INFO" additivity="false">
+            <appender-ref ref="CONSOLE" />
+            <appender-ref ref="FILE" />
+        </logger>
+        
+        <!-- Spring Framework -->
+        <logger name="org.springframework.web" level="WARN" />
+        <logger name="org.springframework.security" level="WARN" />
+        <logger name="org.hibernate" level="WARN" />
+        
+        <!-- Root logger -->
+        <root level="INFO">
+            <appender-ref ref="CONSOLE" />
+            <appender-ref ref="FILE" />
+        </root>
+    </springProfile>
+    
+</configuration>
+
