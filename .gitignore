@@ -69,3 +69,4 @@ spring-boot-devtools.properties
 # Security - Default credentials file
 DEFAULT_CREDENTIALS.md
 test-python/admin-credentials.share
+test-python/custom.share
