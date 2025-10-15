@@ -224,7 +224,7 @@ public class DeltaSharingService {
         // Use delta format if:
         // 1. Table is Delta AND client supports delta format (explicitly or in list), OR
         // 2. Table is Delta AND client doesn't specify format (default to delta for delta tables)
-        boolean useDeltaFormat = isDeltaTable && 
+        boolean useDeltaFormat = isDeltaTable || 
                                  (clientSupportsDelta || requestedFormat == null || requestedFormat.isEmpty());
         
         log.info("📊 Metadata Format Decision - Table: {}, Format: {}, Requested: {}, ClientSupportsDelta: {}, UseDeltaFormat: {}", 
@@ -380,7 +380,7 @@ public class DeltaSharingService {
         // Use delta format if:
         // 1. Table is Delta AND client supports delta format (explicitly or in list), OR
         // 2. Table is Delta AND client doesn't specify format (default to delta for delta tables)
-        boolean useDeltaFormat = isDeltaTable && 
+        boolean useDeltaFormat = isDeltaTable || 
                                  (clientSupportsDelta || requestedFormat == null || requestedFormat.isEmpty());
         
         log.info("📊 Format Decision - Table: {}, Format: {}, Requested: {}, ClientSupportsDelta: {}, UseDeltaFormat: {}", 
