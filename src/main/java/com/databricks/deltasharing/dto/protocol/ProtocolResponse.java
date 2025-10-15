@@ -9,6 +9,9 @@ import lombok.NoArgsConstructor;
 /**
  * Protocol information for Delta Sharing
  * Based on Delta Sharing Protocol specification
+ * https://github.com/delta-io/delta-sharing/blob/main/PROTOCOL.md#read-data-from-a-table
+ * 
+ * Format: {"protocol": {"minReaderVersion": 1}}
  */
 @Data
 @Builder
@@ -18,13 +21,8 @@ import lombok.NoArgsConstructor;
 public class ProtocolResponse {
     
     /**
-     * Minimum reader version required
+     * Minimum reader version required by Delta Sharing Protocol
+     * Always set to 1 for current specification
      */
     private Integer minReaderVersion;
-    
-    /**
-     * Minimum writer version required
-     * Required by official Delta Sharing client
-     */
-    private Integer minWriterVersion;
 }
