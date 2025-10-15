@@ -58,14 +58,14 @@ public class DataInitializer {
     @Order(2)
     public CommandLineRunner initializeData() {
         return args -> {
-            log.info("╔════════════════════════════════════════════════════════════════╗");
-            log.info("║  Initializing Dynamic Sample Data (dev profile)             ║");
-            log.info("╠════════════════════════════════════════════════════════════════╣");
-            log.info("║  Configuration:                                              ║");
-            log.info("║  - Shares: {}                                                ║", TOTAL_SHARES);
-            log.info("║  - Schemas per Share: {}-{}                                  ║", MIN_SCHEMAS_PER_SHARE, MAX_SCHEMAS_PER_SHARE);
-            log.info("║  - Tables per Schema: {}-{}                                 ║", MIN_TABLES_PER_SCHEMA, MAX_TABLES_PER_SCHEMA);
-            log.info("╚════════════════════════════════════════════════════════════════╝");
+            log.info("╔════════════════════════════════════════════════════════════════");
+            log.info("║ Initializing Dynamic Sample Data (dev profile)");
+            log.info("╠════════════════════════════════════════════════════════════════");
+            log.info("║ Configuration:");
+            log.info("║  - Shares: {}", TOTAL_SHARES);
+            log.info("║  - Schemas per Share: {}-{}", MIN_SCHEMAS_PER_SHARE, MAX_SCHEMAS_PER_SHARE);
+            log.info("║  - Tables per Schema: {}-{}", MIN_TABLES_PER_SCHEMA, MAX_TABLES_PER_SCHEMA);
+            log.info("╚════════════════════════════════════════════════════════════════");
             
             // Check if data already exists
             if (shareRepository.count() > 0) {
@@ -319,13 +319,13 @@ public class DataInitializer {
      */
     @Transactional(readOnly = true)
     private void logDataSummary() {
-        log.info("╔════════════════════════════════════════════════════════════════╗");
-        log.info("║           Delta Sharing OnPrem - Data Summary                ║");
-        log.info("╠════════════════════════════════════════════════════════════════╣");
-        log.info("║  Total Shares:  {:<44} ║", shareRepository.count());
-        log.info("║  Total Schemas: {:<44} ║", schemaRepository.count());
-        log.info("║  Total Tables:  {:<44} ║", tableRepository.count());
-        log.info("╚════════════════════════════════════════════════════════════════╝");
+        log.info("╔════════════════════════════════════════════════════════════════");
+        log.info("║ Delta Sharing OnPrem - Data Summary");
+        log.info("╠════════════════════════════════════════════════════════════════");
+        log.info("║ Total Shares:  {}", shareRepository.count());
+        log.info("║ Total Schemas: {}", schemaRepository.count());
+        log.info("║ Total Tables:  {}", tableRepository.count());
+        log.info("╚════════════════════════════════════════════════════════════════");
         
         // Log sample of created shares
         log.info("Sample of generated data:");

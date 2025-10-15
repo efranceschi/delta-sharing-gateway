@@ -5,17 +5,23 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import org.springframework.web.util.ContentCachingRequestWrapper;
+import org.springframework.web.util.ContentCachingResponseWrapper;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.util.Enumeration;
 
 /**
  * Filter para logar todas as requisições HTTP com detalhes completos
  * Facilita o debug mostrando URL completa, parâmetros, método HTTP e tempo de resposta
+ * Em modo DEBUG, também loga os payloads de request e response
  */
 @Slf4j
 @Component
 public class RequestLoggingFilter implements Filter {
+
+    private static final int MAX_PAYLOAD_LENGTH = 10000; // Limitar tamanho do payload no log
 
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
@@ -23,6 +29,10 @@ public class RequestLoggingFilter implements Filter {
         
         HttpServletRequest httpRequest = (HttpServletRequest) request;
         HttpServletResponse httpResponse = (HttpServletResponse) response;
+        
+        // Wrap request e response para poder ler o corpo múltiplas vezes
+        ContentCachingRequestWrapper wrappedRequest = new ContentCachingRequestWrapper(httpRequest);
+        ContentCachingResponseWrapper wrappedResponse = new ContentCachingResponseWrapper(httpResponse);
         
         long startTime = System.currentTimeMillis();
         
@@ -52,7 +62,7 @@ public class RequestLoggingFilter implements Filter {
             }
         }
         
-        // Log dos headers importantes (opcional)
+        // Log dos headers importantes
         String contentType = httpRequest.getContentType();
         if (contentType != null) {
             log.info("║ Content-Type: {}", contentType);
@@ -68,11 +78,11 @@ public class RequestLoggingFilter implements Filter {
         
         try {
             // Continuar com a cadeia de filtros
-            chain.doFilter(request, response);
+            chain.doFilter(wrappedRequest, wrappedResponse);
         } finally {
             // Log da resposta
             long duration = System.currentTimeMillis() - startTime;
-            int status = httpResponse.getStatus();
+            int status = wrappedResponse.getStatus();
             
             String statusEmoji = getStatusEmoji(status);
             
@@ -81,7 +91,80 @@ public class RequestLoggingFilter implements Filter {
             log.info("║ Method: {} {}", method, fullURL);
             log.info("║ Status: {}", status);
             log.info("║ Duration: {} ms", duration);
+            
+            // Log do payload em modo DEBUG
+            if (log.isDebugEnabled()) {
+                // Log Request Body (se houver)
+                String requestPayload = getRequestPayload(wrappedRequest);
+                if (requestPayload != null && !requestPayload.isEmpty()) {
+                    log.debug("║");
+                    log.debug("║ 📥 REQUEST BODY:");
+                    logPayload(requestPayload, "║   ");
+                }
+                
+                // Log Response Body (se houver)
+                String responsePayload = getResponsePayload(wrappedResponse);
+                if (responsePayload != null && !responsePayload.isEmpty()) {
+                    log.debug("║");
+                    log.debug("║ 📤 RESPONSE BODY:");
+                    logPayload(responsePayload, "║   ");
+                }
+            }
+            
             log.info("╚════════════════════════════════════════════════════════════════");
+            
+            // Importante: copiar o conteúdo de volta para a resposta original
+            wrappedResponse.copyBodyToResponse();
+        }
+    }
+    
+    /**
+     * Extrai o payload da requisição
+     */
+    private String getRequestPayload(ContentCachingRequestWrapper request) {
+        byte[] content = request.getContentAsByteArray();
+        if (content.length > 0) {
+            try {
+                String payload = new String(content, 0, Math.min(content.length, MAX_PAYLOAD_LENGTH), 
+                                          request.getCharacterEncoding());
+                return payload;
+            } catch (UnsupportedEncodingException e) {
+                return "[Unable to parse request payload]";
+            }
+        }
+        return null;
+    }
+    
+    /**
+     * Extrai o payload da resposta
+     */
+    private String getResponsePayload(ContentCachingResponseWrapper response) {
+        byte[] content = response.getContentAsByteArray();
+        if (content.length > 0) {
+            try {
+                String payload = new String(content, 0, Math.min(content.length, MAX_PAYLOAD_LENGTH), 
+                                          response.getCharacterEncoding());
+                return payload;
+            } catch (UnsupportedEncodingException e) {
+                return "[Unable to parse response payload]";
+            }
+        }
+        return null;
+    }
+    
+    /**
+     * Loga o payload com indentação e quebra de linhas
+     */
+    private void logPayload(String payload, String prefix) {
+        // Se for muito longo, indicar que foi truncado
+        if (payload.length() >= MAX_PAYLOAD_LENGTH) {
+            payload = payload + "\n... [truncated - payload too large]";
+        }
+        
+        // Logar linha por linha para melhor formatação
+        String[] lines = payload.split("\n");
+        for (String line : lines) {
+            log.debug("{}{}", prefix, line);
         }
     }
     

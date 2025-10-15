@@ -2,7 +2,6 @@ package com.databricks.deltasharing.config;
 
 import com.databricks.deltasharing.model.User;
 import com.databricks.deltasharing.repository.UserRepository;
-import com.databricks.deltasharing.service.UserManagementService;
 import com.databricks.deltasharing.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -40,7 +39,6 @@ public class UserInitializer {
     
     private final UserService userService;
     private final UserRepository userRepository;
-    private final UserManagementService userManagementService;
     private final Environment environment;
     
     @Value("${delta.sharing.token.expiration-days:365}")
@@ -72,36 +70,36 @@ public class UserInitializer {
                 
                 boolean isDevelopment = Arrays.asList(environment.getActiveProfiles()).contains("dev");
                 
-                log.info("╔════════════════════════════════════════════════════════════════╗");
-                log.info("║  Initializing Default Admin User                             ║");
-                log.info("║  Profile: {:<52} ║", isDevelopment ? "DEVELOPMENT" : "PRODUCTION");
-                log.info("╚════════════════════════════════════════════════════════════════╝");
+                log.info("╔════════════════════════════════════════════════════════════════");
+                log.info("║ Initializing Default Admin User");
+                log.info("║ Profile: {}", isDevelopment ? "DEVELOPMENT" : "PRODUCTION");
+                log.info("╚════════════════════════════════════════════════════════════════");
                 
                 // Validate password configuration in production
                 if (!isDevelopment && (defaultAdminPassword == null || defaultAdminPassword.isEmpty())) {
                     String errorMsg = 
                         "\n\n" +
-                        "╔════════════════════════════════════════════════════════════════╗\n" +
-                        "║  ❌ CONFIGURATION ERROR                                       ║\n" +
-                        "╠════════════════════════════════════════════════════════════════╣\n" +
-                        "║  The default admin password is not configured!                ║\n" +
-                        "║                                                                ║\n" +
-                        "║  In PRODUCTION mode, you MUST configure the admin password:   ║\n" +
-                        "║                                                                ║\n" +
-                        "║  Option 1: Set in application.yml (production profile)        ║\n" +
-                        "║    delta:                                                      ║\n" +
-                        "║      sharing:                                                  ║\n" +
-                        "║        admin:                                                  ║\n" +
-                        "║          default-password: YourSecurePassword                 ║\n" +
-                        "║                                                                ║\n" +
-                        "║  Option 2: Set via environment variable                       ║\n" +
-                        "║    export ADMIN_DEFAULT_PASSWORD=\"YourSecurePassword\"        ║\n" +
-                        "║                                                                ║\n" +
-                        "║  Option 3: Set via JVM argument                               ║\n" +
-                        "║    -Ddelta.sharing.admin.default-password=YourSecurePassword  ║\n" +
-                        "║                                                                ║\n" +
-                        "║  Application startup ABORTED for security reasons.            ║\n" +
-                        "╚════════════════════════════════════════════════════════════════╝\n";
+                        "╔════════════════════════════════════════════════════════════════\n" +
+                        "║ ❌ CONFIGURATION ERROR\n" +
+                        "╠════════════════════════════════════════════════════════════════\n" +
+                        "║ The default admin password is not configured!\n" +
+                        "║\n" +
+                        "║ In PRODUCTION mode, you MUST configure the admin password:\n" +
+                        "║\n" +
+                        "║ Option 1: Set in application.yml (production profile)\n" +
+                        "║   delta:\n" +
+                        "║     sharing:\n" +
+                        "║       admin:\n" +
+                        "║         default-password: YourSecurePassword\n" +
+                        "║\n" +
+                        "║ Option 2: Set via environment variable\n" +
+                        "║   export ADMIN_DEFAULT_PASSWORD=\"YourSecurePassword\"\n" +
+                        "║\n" +
+                        "║ Option 3: Set via JVM argument\n" +
+                        "║   -Ddelta.sharing.admin.default-password=YourSecurePassword\n" +
+                        "║\n" +
+                        "║ Application startup ABORTED for security reasons.\n" +
+                        "╚════════════════════════════════════════════════════════════════\n";
                     
                     log.error(errorMsg);
                     throw new IllegalStateException(
@@ -139,33 +137,33 @@ public class UserInitializer {
                     
                     log.info("✅ Development API token generated");
                     log.info("");
-                    log.info("╔════════════════════════════════════════════════════════════════╗");
-                    log.info("║  🔐 DEFAULT WEB LOGIN CREDENTIALS                            ║");
-                    log.info("╠════════════════════════════════════════════════════════════════╣");
-                    log.info("║  Username: {:<51} ║", DEFAULT_ADMIN_USERNAME);
-                    log.info("║  Password: {:<51} ║", defaultAdminPassword);
-                    log.info("╠════════════════════════════════════════════════════════════════╣");
-                    log.info("║  🔑 DEVELOPMENT API TOKEN (65 zeros)                         ║");
-                    log.info("╠════════════════════════════════════════════════════════════════╣");
-                    log.info("║  Token:    {:<51} ║", devToken);
-                    log.info("║  Expires:  {:<51} ║", adminUser.getTokenExpiresAt().toString());
-                    log.info("╠════════════════════════════════════════════════════════════════╣");
-                    log.info("║  ⚠️  DEVELOPMENT MODE:                                        ║");
-                    log.info("║  API token automatically generated for testing purposes.     ║");
-                    log.info("║  Please change the password and regenerate token in prod!    ║");
-                    log.info("╚════════════════════════════════════════════════════════════════╝");
+                    log.info("╔════════════════════════════════════════════════════════════════");
+                    log.info("║ 🔐 DEFAULT WEB LOGIN CREDENTIALS");
+                    log.info("╠════════════════════════════════════════════════════════════════");
+                    log.info("║ Username: {}", DEFAULT_ADMIN_USERNAME);
+                    log.info("║ Password: {}", defaultAdminPassword);
+                    log.info("╠════════════════════════════════════════════════════════════════");
+                    log.info("║ 🔑 DEVELOPMENT API TOKEN (65 zeros)");
+                    log.info("╠════════════════════════════════════════════════════════════════");
+                    log.info("║ Token:    {}", devToken);
+                    log.info("║ Expires:  {}", adminUser.getTokenExpiresAt().toString());
+                    log.info("╠════════════════════════════════════════════════════════════════");
+                    log.info("║ ⚠️  DEVELOPMENT MODE:");
+                    log.info("║ API token automatically generated for testing purposes.");
+                    log.info("║ Please change the password and regenerate token in prod!");
+                    log.info("╚════════════════════════════════════════════════════════════════");
                 } else {
                     log.info("");
-                    log.info("╔════════════════════════════════════════════════════════════════╗");
-                    log.info("║  🔐 DEFAULT WEB LOGIN CREDENTIALS                            ║");
-                    log.info("╠════════════════════════════════════════════════════════════════╣");
-                    log.info("║  Username: {:<51} ║", DEFAULT_ADMIN_USERNAME);
-                    log.info("║  Password: {:<51} ║", defaultAdminPassword);
-                    log.info("╠════════════════════════════════════════════════════════════════╣");
-                    log.info("║  ⚠️  SECURITY WARNING:                                        ║");
-                    log.info("║  Please change the default password after first login!       ║");
-                    log.info("║  Generate API token manually in the web interface.           ║");
-                    log.info("╚════════════════════════════════════════════════════════════════╝");
+                    log.info("╔════════════════════════════════════════════════════════════════");
+                    log.info("║ 🔐 DEFAULT WEB LOGIN CREDENTIALS");
+                    log.info("╠════════════════════════════════════════════════════════════════");
+                    log.info("║ Username: {}", DEFAULT_ADMIN_USERNAME);
+                    log.info("║ Password: {}", defaultAdminPassword);
+                    log.info("╠════════════════════════════════════════════════════════════════");
+                    log.info("║ ⚠️  SECURITY WARNING:");
+                    log.info("║ Please change the default password after first login!");
+                    log.info("║ Generate API token manually in the web interface.");
+                    log.info("╚════════════════════════════════════════════════════════════════");
                 }
                 log.info("");
                 

@@ -3,7 +3,6 @@ package com.databricks.deltasharing.config;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
-import org.springframework.context.annotation.Profile;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
 
@@ -72,27 +71,27 @@ public class EndpointValidator implements CommandLineRunner {
         // Check if endpoint is configured
         if (endpointFqdn == null || endpointFqdn.trim().isEmpty()) {
             String errorMessage = 
-                "╔════════════════════════════════════════════════════════════════╗\n" +
-                "║  CONFIGURATION ERROR: Delta Sharing Endpoint Not Configured   ║\n" +
-                "╠════════════════════════════════════════════════════════════════╣\n" +
-                "║                                                                ║\n" +
-                "║  The Delta Sharing endpoint FQDN is NOT configured.            ║\n" +
-                "║  This parameter is REQUIRED in production environments.        ║\n" +
-                "║                                                                ║\n" +
-                "║  Configure the endpoint via:                                   ║\n" +
-                "║                                                                ║\n" +
-                "║  1. Environment Variable:                                      ║\n" +
-                "║     export DELTA_SHARING_ENDPOINT=https://your-domain.com/... ║\n" +
-                "║                                                                ║\n" +
-                "║  2. application.yml:                                           ║\n" +
-                "║     delta:                                                     ║\n" +
-                "║       sharing:                                                 ║\n" +
-                "║         endpoint-fqdn: https://your-domain.com/delta-sharing  ║\n" +
-                "║                                                                ║\n" +
-                "║  Example:                                                      ║\n" +
-                "║     endpoint-fqdn: https://data.company.com/delta-sharing     ║\n" +
-                "║                                                                ║\n" +
-                "╚════════════════════════════════════════════════════════════════╝";
+                "╔════════════════════════════════════════════════════════════════\n" +
+                "║ CONFIGURATION ERROR: Delta Sharing Endpoint Not Configured\n" +
+                "╠════════════════════════════════════════════════════════════════\n" +
+                "║\n" +
+                "║ The Delta Sharing endpoint FQDN is NOT configured.\n" +
+                "║ This parameter is REQUIRED in production environments.\n" +
+                "║\n" +
+                "║ Configure the endpoint via:\n" +
+                "║\n" +
+                "║ 1. Environment Variable:\n" +
+                "║    export DELTA_SHARING_ENDPOINT=https://your-domain.com/...\n" +
+                "║\n" +
+                "║ 2. application.yml:\n" +
+                "║    delta:\n" +
+                "║      sharing:\n" +
+                "║        endpoint-fqdn: https://your-domain.com/delta-sharing\n" +
+                "║\n" +
+                "║ Example:\n" +
+                "║    endpoint-fqdn: https://data.company.com/delta-sharing\n" +
+                "║\n" +
+                "╚════════════════════════════════════════════════════════════════";
             
             log.error(errorMessage);
             throw new IllegalStateException(
@@ -109,23 +108,23 @@ public class EndpointValidator implements CommandLineRunner {
             lowerEndpoint.contains("0.0.0.0")) {
             
             String errorMessage = 
-                "╔════════════════════════════════════════════════════════════════╗\n" +
-                "║  CONFIGURATION ERROR: Localhost Endpoint in Production        ║\n" +
-                "╠════════════════════════════════════════════════════════════════╣\n" +
-                "║                                                                ║\n" +
-                "║  The Delta Sharing endpoint is configured with localhost.      ║\n" +
-                "║  Localhost endpoints are NOT ALLOWED in production.            ║\n" +
-                "║                                                                ║\n" +
-                "║  Current endpoint: " + String.format("%-47s", endpointFqdn) + "║\n" +
-                "║                                                                ║\n" +
-                "║  Please configure a PUBLIC endpoint:                           ║\n" +
-                "║                                                                ║\n" +
-                "║  export DELTA_SHARING_ENDPOINT=https://your-domain.com/...    ║\n" +
-                "║                                                                ║\n" +
-                "║  Example:                                                      ║\n" +
-                "║     endpoint-fqdn: https://data.company.com/delta-sharing     ║\n" +
-                "║                                                                ║\n" +
-                "╚════════════════════════════════════════════════════════════════╝";
+                "╔════════════════════════════════════════════════════════════════\n" +
+                "║ CONFIGURATION ERROR: Localhost Endpoint in Production\n" +
+                "╠════════════════════════════════════════════════════════════════\n" +
+                "║\n" +
+                "║ The Delta Sharing endpoint is configured with localhost.\n" +
+                "║ Localhost endpoints are NOT ALLOWED in production.\n" +
+                "║\n" +
+                "║ Current endpoint: " + endpointFqdn + "\n" +
+                "║\n" +
+                "║ Please configure a PUBLIC endpoint:\n" +
+                "║\n" +
+                "║ export DELTA_SHARING_ENDPOINT=https://your-domain.com/...\n" +
+                "║\n" +
+                "║ Example:\n" +
+                "║    endpoint-fqdn: https://data.company.com/delta-sharing\n" +
+                "║\n" +
+                "╚════════════════════════════════════════════════════════════════";
             
             log.error(errorMessage);
             throw new IllegalStateException(
@@ -137,18 +136,18 @@ public class EndpointValidator implements CommandLineRunner {
         // Additional validation: must be HTTP/HTTPS
         if (!lowerEndpoint.startsWith("http://") && !lowerEndpoint.startsWith("https://")) {
             String errorMessage = 
-                "╔════════════════════════════════════════════════════════════════╗\n" +
-                "║  CONFIGURATION ERROR: Invalid Endpoint Protocol               ║\n" +
-                "╠════════════════════════════════════════════════════════════════╣\n" +
-                "║                                                                ║\n" +
-                "║  The Delta Sharing endpoint must start with http:// or https://║\n" +
-                "║                                                                ║\n" +
-                "║  Current endpoint: " + String.format("%-47s", endpointFqdn) + "║\n" +
-                "║                                                                ║\n" +
-                "║  Correct format:                                               ║\n" +
-                "║     https://your-domain.com/delta-sharing                      ║\n" +
-                "║                                                                ║\n" +
-                "╚════════════════════════════════════════════════════════════════╝";
+                "╔════════════════════════════════════════════════════════════════\n" +
+                "║ CONFIGURATION ERROR: Invalid Endpoint Protocol\n" +
+                "╠════════════════════════════════════════════════════════════════\n" +
+                "║\n" +
+                "║ The Delta Sharing endpoint must start with http:// or https://\n" +
+                "║\n" +
+                "║ Current endpoint: " + endpointFqdn + "\n" +
+                "║\n" +
+                "║ Correct format:\n" +
+                "║    https://your-domain.com/delta-sharing\n" +
+                "║\n" +
+                "╚════════════════════════════════════════════════════════════════";
             
             log.error(errorMessage);
             throw new IllegalStateException(
