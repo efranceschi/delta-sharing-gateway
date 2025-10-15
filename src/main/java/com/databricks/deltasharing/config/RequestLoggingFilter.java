@@ -74,6 +74,26 @@ public class RequestLoggingFilter implements Filter {
             log.info("║ Authorization: Bearer ***");
         }
         
+        // Log completo de todos os headers em modo DEBUG
+        if (log.isDebugEnabled()) {
+            log.debug("║");
+            log.debug("║ 📋 ALL REQUEST HEADERS:");
+            Enumeration<String> headerNames = httpRequest.getHeaderNames();
+            while (headerNames.hasMoreElements()) {
+                String headerName = headerNames.nextElement();
+                String headerValue = httpRequest.getHeader(headerName);
+                
+                // Mascarar tokens sensíveis
+                if (headerName.equalsIgnoreCase("Authorization") && headerValue != null) {
+                    if (headerValue.startsWith("Bearer ")) {
+                        headerValue = "Bearer " + maskToken(headerValue.substring(7));
+                    }
+                }
+                
+                log.debug("║   {}: {}", headerName, headerValue);
+            }
+        }
+        
         log.info("╚════════════════════════════════════════════════════════════════");
         
         try {
@@ -92,8 +112,16 @@ public class RequestLoggingFilter implements Filter {
             log.info("║ Status: {}", status);
             log.info("║ Duration: {} ms", duration);
             
-            // Log do payload em modo DEBUG
+            // Log do payload e headers em modo DEBUG
             if (log.isDebugEnabled()) {
+                // Log Response Headers
+                log.debug("║");
+                log.debug("║ 📋 ALL RESPONSE HEADERS:");
+                for (String headerName : wrappedResponse.getHeaderNames()) {
+                    String headerValue = wrappedResponse.getHeader(headerName);
+                    log.debug("║   {}: {}", headerName, headerValue);
+                }
+                
                 // Log Request Body (se houver)
                 String requestPayload = getRequestPayload(wrappedRequest);
                 if (requestPayload != null && !requestPayload.isEmpty()) {
@@ -182,6 +210,18 @@ public class RequestLoggingFilter implements Filter {
             return "❌"; // Erro do servidor
         }
         return "ℹ️"; // Informacional
+    }
+    
+    /**
+     * Mascarar token para segurança - mostra apenas primeiros e últimos caracteres
+     */
+    private String maskToken(String token) {
+        if (token == null || token.length() <= 10) {
+            return "***";
+        }
+        String prefix = token.substring(0, 4);
+        String suffix = token.substring(token.length() - 4);
+        return prefix + "..." + suffix;
     }
 }
 
