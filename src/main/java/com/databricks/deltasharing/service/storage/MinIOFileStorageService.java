@@ -163,8 +163,18 @@ public class MinIOFileStorageService implements FileStorageService {
     @Override
     public List<FileResponse> getTableFiles(DeltaTable table, Long version, 
                                              List<String> predicateHints, Integer limitHint) {
-        log.debug("Getting MinIO files for table: {} (format: {}) at location: {}", 
-                  table.getName(), table.getFormat(), table.getLocation());
+        if (log.isDebugEnabled()) {
+            log.debug("Delta Sharing client requesting files from MinIO:");
+            log.debug("  Table: {}.{}.{}", 
+                     table.getSchema().getShare().getName(), 
+                     table.getSchema().getName(), 
+                     table.getName());
+            log.debug("  Location: {}", table.getLocation());
+            log.debug("  Format: {}", table.getFormat());
+            log.debug("  Version: {}", version != null ? version : "latest");
+            log.debug("  Predicates: {}", predicateHints != null && !predicateHints.isEmpty() ? predicateHints : "none");
+            log.debug("  Limit hint: {}", limitHint != null ? limitHint : "unlimited");
+        }
         
         if (!isAvailable()) {
             log.warn("MinIO storage service is not available");
@@ -242,9 +252,60 @@ public class MinIOFileStorageService implements FileStorageService {
                  limitedFiles.size(), allFiles.size());
         
         // Convert AddAction to FileResponse with pre-signed URLs
-        return limitedFiles.stream()
+        List<FileResponse> fileResponses = limitedFiles.stream()
                 .map(addAction -> createFileResponseFromAddAction(addAction, s3Location, version))
                 .collect(Collectors.toList());
+        
+        // Debug: Log details about returned files
+        if (log.isDebugEnabled() && !fileResponses.isEmpty()) {
+            long totalSize = fileResponses.stream()
+                    .filter(f -> f.getSize() != null)
+                    .mapToLong(FileResponse::getSize)
+                    .sum();
+            
+            log.debug("Generated {} pre-signed URLs for MinIO files:", fileResponses.size());
+            log.debug("  Total size: {} bytes ({} MB)", totalSize, totalSize / 1024 / 1024);
+            log.debug("  URL expiration: {} minutes", urlExpirationMinutes);
+            log.debug("  Bucket: {}", s3Location.bucket);
+            log.debug("  Base path: {}", s3Location.path);
+            
+            // Log first few file details
+            int maxToLog = Math.min(5, fileResponses.size());
+            for (int i = 0; i < maxToLog; i++) {
+                FileResponse file = fileResponses.get(i);
+                String urlPreview = truncateUrl(file.getUrl());
+                log.debug("  File {}: {} (size: {} bytes, partitions: {})", 
+                         i + 1, 
+                         file.getId(), 
+                         file.getSize() != null ? file.getSize() : "unknown",
+                         file.getPartitionValues() != null && !file.getPartitionValues().isEmpty() 
+                             ? file.getPartitionValues() : "none");
+                log.debug("    URL: {}", urlPreview);
+            }
+            
+            if (fileResponses.size() > maxToLog) {
+                log.debug("  ... and {} more files", fileResponses.size() - maxToLog);
+            }
+        }
+        
+        return fileResponses;
+    }
+    
+    /**
+     * Truncate pre-signed URL to hide sensitive query parameters while keeping useful info
+     */
+    private String truncateUrl(String url) {
+        if (url == null) return "null";
+        
+        // Find the query string start
+        int queryStart = url.indexOf('?');
+        if (queryStart == -1) {
+            return url; // No query string, return as is
+        }
+        
+        // Return URL up to query string + indicator
+        String baseUrl = url.substring(0, queryStart);
+        return baseUrl + "?[credentials-hidden]";
     }
     
     /**
@@ -286,6 +347,10 @@ public class MinIOFileStorageService implements FileStorageService {
         try {
             String objectName = s3Location.path + addAction.getPath();
             
+            if (log.isDebugEnabled()) {
+                log.debug("Generating pre-signed URL for: {}", objectName);
+            }
+            
             // Generate pre-signed URL
             String presignedUrl = minioClient.getPresignedObjectUrl(
                     GetPresignedObjectUrlArgs.builder()
@@ -295,6 +360,13 @@ public class MinIOFileStorageService implements FileStorageService {
                             .expiry(urlExpirationMinutes, TimeUnit.MINUTES)
                             .build()
             );
+            
+            if (log.isDebugEnabled()) {
+                log.debug("Generated URL for {}: {} (expires in {} min)", 
+                         addAction.getPath(), 
+                         truncateUrl(presignedUrl),
+                         urlExpirationMinutes);
+            }
             
             // Convert FileStatistics to Map for response
             Map<String, Object> stats = null;
@@ -687,6 +759,16 @@ public class MinIOFileStorageService implements FileStorageService {
     public List<FileResponse> getTableChanges(DeltaTable table, Long startingVersion, Long endingVersion) {
         log.info("Getting table changes for: {} from version {} to {}", 
                 table.getName(), startingVersion, endingVersion);
+        
+        if (log.isDebugEnabled()) {
+            log.debug("Delta Sharing client requesting changes from MinIO:");
+            log.debug("  Table: {}.{}.{}", 
+                     table.getSchema().getShare().getName(), 
+                     table.getSchema().getName(), 
+                     table.getName());
+            log.debug("  Starting version: {}", startingVersion);
+            log.debug("  Ending version: {}", endingVersion != null ? endingVersion : "latest");
+        }
         
         if (!isAvailable()) {
             log.warn("MinIO storage service is not available");
