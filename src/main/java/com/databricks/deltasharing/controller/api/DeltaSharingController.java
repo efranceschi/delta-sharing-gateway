@@ -59,6 +59,8 @@ public class DeltaSharingController {
     /**
      * Get a specific share
      * GET /shares/{share}
+     * 
+     * Returns: {"share": {"name": "...", "id": "..."}}
      */
     @GetMapping("/shares/{share}")
     @Operation(summary = "Get Share", 
@@ -67,12 +69,12 @@ public class DeltaSharingController {
         @ApiResponse(responseCode = "200", description = "Successfully retrieved share"),
         @ApiResponse(responseCode = "404", description = "Share not found")
     })
-    public ResponseEntity<ShareResponse> getShare(
+    public ResponseEntity<GetShareResponse> getShare(
             @Parameter(description = "Share name", required = true)
             @PathVariable String share) {
         
         log.info("Delta Sharing API: Getting share: {}", share);
-        ShareResponse response = deltaSharingService.getShare(share);
+        GetShareResponse response = deltaSharingService.getShare(share);
         
         return ResponseEntity.ok()
                 .header("Delta-Sharing-Capabilities", DELTA_SHARING_CAPABILITIES)

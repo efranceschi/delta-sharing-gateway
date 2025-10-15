@@ -62,9 +62,12 @@ public class DeltaSharingService {
     /**
      * Get a specific share
      * Endpoint: GET /shares/{share}
+     * 
+     * Returns share information wrapped in "share" field per protocol specification:
+     * {"share": {"name": "...", "id": "..."}}
      */
     @Transactional(readOnly = true)
-    public ShareResponse getShare(String shareName) {
+    public GetShareResponse getShare(String shareName) {
         log.debug("Getting share: {}", shareName);
         
         verifyShareIsActive(shareName);
@@ -72,7 +75,12 @@ public class DeltaSharingService {
         DeltaShare share = shareRepository.findByName(shareName)
                 .orElseThrow(() -> new ResourceNotFoundException("Share not found: " + shareName));
         
-        return convertToShareResponse(share);
+        ShareResponse shareResponse = convertToShareResponse(share);
+        
+        // Wrap in GetShareResponse to add the "share" wrapper per protocol
+        return GetShareResponse.builder()
+                .share(shareResponse)
+                .build();
     }
     
     /**
