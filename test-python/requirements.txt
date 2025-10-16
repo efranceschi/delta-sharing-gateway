@@ -1,5 +1,5 @@
 # Delta Sharing Python Client
-delta-sharing>=1.0.0
+delta-sharing>=1.3.3
 
 # Data manipulation
 pandas>=2.0.0
