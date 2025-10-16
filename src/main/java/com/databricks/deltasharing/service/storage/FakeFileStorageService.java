@@ -285,6 +285,12 @@ public class FakeFileStorageService implements FileStorageService {
         return tempDir != null && tempDir.exists();
     }
     
+    @Override
+    public Long getTableVersion(String tableName) {
+        // Fake storage doesn't support versioning, return 0
+        return 0L;
+    }
+    
     /**
      * Get the schema for a table (interface implementation)
      * Cached to avoid repeated schema generation

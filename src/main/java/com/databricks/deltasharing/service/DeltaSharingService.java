@@ -327,10 +327,10 @@ public class DeltaSharingService {
         // Get table version if Delta format
         Long tableVersion = null;
         if (useDeltaFormat && "delta".equalsIgnoreCase(table.getFormat())) {
-            if (fileStorageService instanceof com.databricks.deltasharing.service.storage.MinIOFileStorageService) {
-                com.databricks.deltasharing.service.storage.MinIOFileStorageService minioService = 
-                    (com.databricks.deltasharing.service.storage.MinIOFileStorageService) fileStorageService;
-                tableVersion = minioService.getTableVersion(table.getName());
+            tableVersion = fileStorageService.getTableVersion(table.getName());
+            // Set to null if version is 0 (not supported)
+            if (tableVersion != null && tableVersion == 0L) {
+                tableVersion = null;
             }
         }
         
@@ -491,10 +491,10 @@ public class DeltaSharingService {
         // Get table version if Delta format
         Long tableVersion = null;
         if (useDeltaFormat && "delta".equalsIgnoreCase(table.getFormat())) {
-            if (fileStorageService instanceof com.databricks.deltasharing.service.storage.MinIOFileStorageService) {
-                com.databricks.deltasharing.service.storage.MinIOFileStorageService minioService = 
-                    (com.databricks.deltasharing.service.storage.MinIOFileStorageService) fileStorageService;
-                tableVersion = minioService.getTableVersion(table.getName());
+            tableVersion = fileStorageService.getTableVersion(table.getName());
+            // Set to null if version is 0 (not supported)
+            if (tableVersion != null && tableVersion == 0L) {
+                tableVersion = null;
             }
         }
         
@@ -699,7 +699,11 @@ public class DeltaSharingService {
         // Get table version if Delta format
         Long tableVersion = null;
         if (useDeltaFormat && "delta".equalsIgnoreCase(table.getFormat())) {
-            tableVersion = minioService.getTableVersion(table.getName());
+            tableVersion = fileStorageService.getTableVersion(table.getName());
+            // Set to null if version is 0 (not supported)
+            if (tableVersion != null && tableVersion == 0L) {
+                tableVersion = null;
+            }
         }
         
         MetadataResponse metadata = MetadataResponse.builder()

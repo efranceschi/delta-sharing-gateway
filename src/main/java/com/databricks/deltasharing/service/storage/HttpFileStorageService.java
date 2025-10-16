@@ -243,6 +243,12 @@ public class HttpFileStorageService implements FileStorageService {
         return enabled && baseUrl != null && !baseUrl.isEmpty();
     }
     
+    @Override
+    public Long getTableVersion(String tableName) {
+        // HTTP storage doesn't support versioning, return 0
+        return 0L;
+    }
+    
     /**
      * Get table schema from Delta log metadata
      * For HTTP storage, we read the schema from the Delta transaction log

@@ -54,4 +54,12 @@ public interface FileStorageService {
      * @return true if the service is ready to use
      */
     boolean isAvailable();
+    
+    /**
+     * Get the current version of a Delta table
+     * 
+     * @param tableName The name of the table
+     * @return Current version number, or 0 if versioning is not supported
+     */
+    Long getTableVersion(String tableName);
 }
