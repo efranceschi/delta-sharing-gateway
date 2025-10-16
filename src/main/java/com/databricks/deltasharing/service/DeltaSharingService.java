@@ -324,16 +324,27 @@ public class DeltaSharingService {
                 .sum();
         long numFiles = files.size();
         
+        // Get table version if Delta format
+        Long tableVersion = null;
+        if (useDeltaFormat && "delta".equalsIgnoreCase(table.getFormat())) {
+            if (fileStorageService instanceof com.databricks.deltasharing.service.storage.MinIOFileStorageService) {
+                com.databricks.deltasharing.service.storage.MinIOFileStorageService minioService = 
+                    (com.databricks.deltasharing.service.storage.MinIOFileStorageService) fileStorageService;
+                tableVersion = minioService.getTableVersion(table.getName());
+            }
+        }
+        
         MetadataResponse metadata = MetadataResponse.builder()
                 .id(table.getUuid())
                 .format(FormatResponse.builder()
-                        .provider(table.getFormat())
+                        .provider("parquet")
                         .build())
                 .schemaString(schemaString)
                 .partitionColumns(partitionColumns)
                 .configuration(new HashMap<>())
                 .size(totalSize)
                 .numFiles(numFiles)
+                .version(tableVersion)
                 .build();
         String metadataJson = String.format("{\"metaData\":%s}", toNdjson(metadata));
         response.append(metadataJson).append("\n");
@@ -477,15 +488,25 @@ public class DeltaSharingService {
         String[] partCols = fileStorageService.getPartitionColumns(table.getName());
         List<String> partitionColumns = Arrays.asList(partCols);
         
-        // Metadata line
+        // Get table version if Delta format
+        Long tableVersion = null;
+        if (useDeltaFormat && "delta".equalsIgnoreCase(table.getFormat())) {
+            if (fileStorageService instanceof com.databricks.deltasharing.service.storage.MinIOFileStorageService) {
+                com.databricks.deltasharing.service.storage.MinIOFileStorageService minioService = 
+                    (com.databricks.deltasharing.service.storage.MinIOFileStorageService) fileStorageService;
+                tableVersion = minioService.getTableVersion(table.getName());
+            }
+        }
+        
         MetadataResponse metadata = MetadataResponse.builder()
                 .id(table.getUuid())
                 .name(table.getName())
                 .format(FormatResponse.builder()
-                        .provider(table.getFormat())
+                        .provider("parquet")
                         .build())
                 .schemaString(schemaString)
                 .partitionColumns(partitionColumns)
+                .version(tableVersion)
                 .build();
         String metadataJson;
         if (useDeltaFormat) {
@@ -675,14 +696,21 @@ public class DeltaSharingService {
         String[] partCols = fileStorageService.getPartitionColumns(table.getName());
         List<String> partitionColumns = Arrays.asList(partCols);
         
+        // Get table version if Delta format
+        Long tableVersion = null;
+        if (useDeltaFormat && "delta".equalsIgnoreCase(table.getFormat())) {
+            tableVersion = minioService.getTableVersion(table.getName());
+        }
+        
         MetadataResponse metadata = MetadataResponse.builder()
                 .id(table.getUuid())
                 .name(table.getName())
                 .format(FormatResponse.builder()
-                        .provider(table.getFormat())
+                        .provider("parquet")
                         .build())
                 .schemaString(schemaString)
                 .partitionColumns(partitionColumns)
+                .version(tableVersion)
                 .build();
         String metadataJson = String.format("{\"metaData\":%s}", toNdjson(metadata));
         response.append(metadataJson).append("\n");
