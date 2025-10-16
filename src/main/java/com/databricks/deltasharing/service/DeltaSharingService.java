@@ -349,22 +349,8 @@ public class DeltaSharingService {
         String metadataJson = String.format("{\"metaData\":%s}", toNdjson(metadata));
         response.append(metadataJson).append("\n");
         
-        // Add EndStreamAction if requested by client
-        if (request != null && Boolean.TRUE.equals(request.getIncludeEndStreamAction())) {
-            EndStreamAction action = EndStreamAction.builder()
-                    .refreshToken(generateRefreshToken(shareName, schemaName, tableName))
-                    .build();
-            
-            // Wrap in EndStreamActionWrapper to match protocol format
-            EndStreamActionWrapper wrapper = EndStreamActionWrapper.builder()
-                    .endStreamAction(action)
-                    .build();
-            
-            String endStreamJson = toNdjson(wrapper);
-            response.append(endStreamJson).append("\n");
-            
-            log.debug("Added EndStreamAction to metadata response");
-        }
+        // Per Delta Sharing Protocol: /metadata endpoint returns exactly 2 lines (protocol + metadata)
+        // EndStreamAction is not supported on /metadata endpoint
         
         // Debug: Log the full response for troubleshooting
         String fullResponse = response.toString();
