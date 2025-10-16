@@ -40,7 +40,7 @@ public class DeltaSharingController {
     //   Format: {"protocol": {"deltaProtocol": {...}}}, {"metaData": {"deltaMetadata": {...}}}, {"file": {"deltaSingleAction": {...}}}
     // 
     // Clients can specify their preferred format via query parameter: ?responseFormat=parquet or ?responseFormat=delta
-    private static final String DELTA_SHARING_CAPABILITIES = "responseformat=parquet,delta";
+    private static final String DELTA_SHARING_CAPABILITIES_DELTA = "responseformat=delta";
     private static final String DELTA_SHARING_CAPABILITIES_PARQUET = "responseformat=parquet";
     
     /**
@@ -56,7 +56,7 @@ public class DeltaSharingController {
         
         if ("delta".equalsIgnoreCase(tableFormat)) {
             // Delta tables support both delta and parquet response formats
-            return DELTA_SHARING_CAPABILITIES;
+            return DELTA_SHARING_CAPABILITIES_DELTA;
         } else {
             // Parquet tables only support parquet response format
             return DELTA_SHARING_CAPABILITIES_PARQUET;
@@ -81,7 +81,7 @@ public class DeltaSharingController {
         ListSharesResponse response = deltaSharingService.listShares(maxResults, pageToken);
         
         return ResponseEntity.ok()
-                .header("Delta-Sharing-Capabilities", DELTA_SHARING_CAPABILITIES)
+                .header("Delta-Sharing-Capabilities", DELTA_SHARING_CAPABILITIES_DELTA)
                 .body(response);
     }
     
@@ -106,7 +106,7 @@ public class DeltaSharingController {
         GetShareResponse response = deltaSharingService.getShare(share);
         
         return ResponseEntity.ok()
-                .header("Delta-Sharing-Capabilities", DELTA_SHARING_CAPABILITIES)
+                .header("Delta-Sharing-Capabilities", DELTA_SHARING_CAPABILITIES_DELTA)
                 .body(response);
     }
     
@@ -133,7 +133,7 @@ public class DeltaSharingController {
         ListSchemasResponse response = deltaSharingService.listSchemas(share, maxResults, pageToken);
         
         return ResponseEntity.ok()
-                .header("Delta-Sharing-Capabilities", DELTA_SHARING_CAPABILITIES)
+                .header("Delta-Sharing-Capabilities", DELTA_SHARING_CAPABILITIES_DELTA)
                 .body(response);
     }
     
@@ -163,7 +163,7 @@ public class DeltaSharingController {
                 share, schema, maxResults, pageToken);
         
         return ResponseEntity.ok()
-                .header("Delta-Sharing-Capabilities", DELTA_SHARING_CAPABILITIES)
+                .header("Delta-Sharing-Capabilities", DELTA_SHARING_CAPABILITIES_DELTA)
                 .body(response);
     }
     
@@ -190,7 +190,7 @@ public class DeltaSharingController {
         ListTablesResponse response = deltaSharingService.listAllTables(share, maxResults, pageToken);
         
         return ResponseEntity.ok()
-                .header("Delta-Sharing-Capabilities", DELTA_SHARING_CAPABILITIES)
+                .header("Delta-Sharing-Capabilities", DELTA_SHARING_CAPABILITIES_DELTA)
                 .body(response);
     }
     
@@ -281,7 +281,7 @@ public class DeltaSharingController {
         String response = String.format("{\"deltaTableVersion\":%d}", version);
         
         return ResponseEntity.ok()
-                .header("Delta-Sharing-Capabilities", DELTA_SHARING_CAPABILITIES)
+                .header("Delta-Sharing-Capabilities", DELTA_SHARING_CAPABILITIES_DELTA)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(response);
     }

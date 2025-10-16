@@ -144,8 +144,7 @@ Available Tests:
   8  - Load as Pandas (Basic)
   9  - Load with Limit
   10 - Load with Version
-  11 - Load as Spark
-  12 - Error Handling
+  11 - Error Handling
         """
     )
     
@@ -183,8 +182,7 @@ Available Tests:
         print("  8  - Load as Pandas (Basic)")
         print("  9  - Load with Limit")
         print("  10 - Load with Version")
-        print("  11 - Load as Spark")
-        print("  12 - Error Handling")
+        print("  11 - Error Handling")
         sys.exit(0)
     
     PROFILE_FILE = args.profile
@@ -589,48 +587,6 @@ def test_load_as_pandas_with_version():
 
 
 # ═════════════════════════════════════════════════════════════════════════════
-# Test: Load Table as Spark
-# ═════════════════════════════════════════════════════════════════════════════
-
-def test_load_as_spark():
-    """Test delta_sharing.load_as_spark() if Spark is available"""
-    try:
-        # Check if Spark is available
-        try:
-            from pyspark.sql import SparkSession
-            spark_available = True
-        except ImportError:
-            spark_available = False
-        
-        if not spark_available:
-            print(f"{Colors.YELLOW}Spark not available - skipping Spark test{Colors.RESET}")
-            return True
-        
-        client = delta_sharing.SharingClient(PROFILE_FILE)
-        all_tables = client.list_all_tables()
-        
-        if not all_tables:
-            print(f"{Colors.YELLOW}No tables available{Colors.RESET}")
-            return True
-        
-        table = all_tables[0]
-        table_url = f"{PROFILE_FILE}#{table.share}.{table.schema}.{table.name}"
-        
-        print(f"{Colors.CYAN}Loading table as Spark DataFrame{Colors.RESET}")
-        spark_df = delta_sharing.load_as_spark(table_url)
-        
-        print(f"{Colors.GREEN}Table loaded as Spark DataFrame{Colors.RESET}")
-        print(f"  Schema: {spark_df.schema}")
-        print(f"  Count: {spark_df.count()}")
-        
-        return True
-    except Exception as e:
-        print(f"{Colors.YELLOW}Spark test: {e}{Colors.RESET}")
-        print(f"{Colors.YELLOW}This is expected if Spark is not installed{Colors.RESET}")
-        return True  # Don't fail the test
-
-
-# ═════════════════════════════════════════════════════════════════════════════
 # Test: Error Handling
 # ═════════════════════════════════════════════════════════════════════════════
 
@@ -727,13 +683,10 @@ def main():
         if should_run_test(10):
             run_test("Test 10: Load with Version", test_load_as_pandas_with_version)
         
-        if should_run_test(11):
-            run_test("Test 11: Load as Spark", test_load_as_spark)
-        
         # Advanced Tests
-        if should_run_test(12):
+        if should_run_test(11):
             print_section("ADVANCED TESTS")
-            run_test("Test 12: Error Handling", test_error_handling)
+            run_test("Test 11: Error Handling", test_error_handling)
         
         # Summary
         print_section("TEST SUMMARY")
@@ -743,7 +696,7 @@ def main():
         if total_tests == 0:
             print(f"{Colors.YELLOW}No tests were executed.{Colors.RESET}")
             if TEST_TO_RUN:
-                print(f"{Colors.YELLOW}Check if the test number(s) {TEST_TO_RUN} are valid (1-12).{Colors.RESET}")
+                print(f"{Colors.YELLOW}Check if the test number(s) {TEST_TO_RUN} are valid (1-11).{Colors.RESET}")
             print(f"\nUse --list to see available tests.")
             sys.exit(0)
         
