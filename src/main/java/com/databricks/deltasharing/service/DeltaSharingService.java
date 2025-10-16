@@ -394,6 +394,29 @@ public class DeltaSharingService {
     }
     
     /**
+     * Get table format (delta or parquet)
+     * Used for determining appropriate Delta-Sharing-Capabilities header
+     * 
+     * @param shareName Share name
+     * @param schemaName Schema name
+     * @param tableName Table name
+     * @return Table format: "delta" or "parquet"
+     */
+    public String getTableFormat(String shareName, String schemaName, String tableName) {
+        log.debug("Getting format for table: {}.{}.{}", shareName, schemaName, tableName);
+        
+        verifyShareIsActive(shareName);
+        
+        DeltaTable table = tableRepository.findByNameAndSchemaNameAndShareName(
+                tableName, schemaName, shareName)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Table not found: " + tableName + " in schema: " + schemaName + 
+                        " in share: " + shareName));
+        
+        return table.getFormat();
+    }
+    
+    /**
      * Query table data (files)
      * Endpoint: POST /shares/{share}/schemas/{schema}/tables/{table}/query
      */

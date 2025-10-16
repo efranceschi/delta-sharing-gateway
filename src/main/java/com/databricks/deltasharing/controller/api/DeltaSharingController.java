@@ -41,6 +41,27 @@ public class DeltaSharingController {
     // 
     // Clients can specify their preferred format via query parameter: ?responseFormat=parquet or ?responseFormat=delta
     private static final String DELTA_SHARING_CAPABILITIES = "responseformat=parquet,delta";
+    private static final String DELTA_SHARING_CAPABILITIES_PARQUET = "responseformat=parquet";
+    
+    /**
+     * Get appropriate Delta-Sharing-Capabilities header based on table format
+     * 
+     * @param share Share name
+     * @param schema Schema name
+     * @param table Table name
+     * @return Capabilities header string
+     */
+    private String getCapabilitiesHeader(String share, String schema, String table) {
+        String tableFormat = deltaSharingService.getTableFormat(share, schema, table);
+        
+        if ("delta".equalsIgnoreCase(tableFormat)) {
+            // Delta tables support both delta and parquet response formats
+            return DELTA_SHARING_CAPABILITIES;
+        } else {
+            // Parquet tables only support parquet response format
+            return DELTA_SHARING_CAPABILITIES_PARQUET;
+        }
+    }
     
     /**
      * List all shares
@@ -215,9 +236,12 @@ public class DeltaSharingController {
         // Get current table version for header
         Long tableVersion = deltaSharingService.queryTableVersion(share, schema, table);
         
+        // Get appropriate capabilities header based on table format
+        String capabilitiesHeaderValue = getCapabilitiesHeader(share, schema, table);
+        
         // Build response headers
         ResponseEntity.BodyBuilder responseBuilder = ResponseEntity.ok()
-                .header("Delta-Sharing-Capabilities", DELTA_SHARING_CAPABILITIES)
+                .header("Delta-Sharing-Capabilities", capabilitiesHeaderValue)
                 .header("Delta-Table-Version", String.valueOf(tableVersion))
                 .contentType(MediaType.parseMediaType("application/x-ndjson"));
         
@@ -318,9 +342,12 @@ public class DeltaSharingController {
         // Get current table version for header
         Long tableVersion = deltaSharingService.queryTableVersion(share, schema, table);
         
+        // Get appropriate capabilities header based on table format
+        String capabilitiesHeaderValue = getCapabilitiesHeader(share, schema, table);
+        
         // Build response headers
         ResponseEntity.BodyBuilder responseBuilder = ResponseEntity.ok()
-                .header("Delta-Sharing-Capabilities", DELTA_SHARING_CAPABILITIES)
+                .header("Delta-Sharing-Capabilities", capabilitiesHeaderValue)
                 .header("Delta-Table-Version", String.valueOf(tableVersion))
                 .contentType(MediaType.parseMediaType("application/x-ndjson"));
         
@@ -402,8 +429,11 @@ public class DeltaSharingController {
         // Get current table version for header
         Long tableVersion = deltaSharingService.queryTableVersion(share, schema, table);
         
+        // Get appropriate capabilities header based on table format
+        String capabilitiesHeaderValue = getCapabilitiesHeader(share, schema, table);
+        
         return ResponseEntity.ok()
-                .header("Delta-Sharing-Capabilities", DELTA_SHARING_CAPABILITIES)
+                .header("Delta-Sharing-Capabilities", capabilitiesHeaderValue)
                 .header("Delta-Table-Version", String.valueOf(tableVersion))
                 .contentType(MediaType.parseMediaType("application/x-ndjson"))
                 .body(response);
