@@ -202,7 +202,31 @@
     
     <build>
         <finalName>${project.artifactId}</finalName>
+        
+        <!-- Enable resource filtering for application.yml -->
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>true</filtering>
+                <includes>
+                    <include>banner.txt</include>
+                </includes>
+            </resource>
+        </resources>
+        
         <plugins>
+            <!-- Maven Resources Plugin with filtering -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-resources-plugin</artifactId>
+                <configuration>
+                    <encoding>UTF-8</encoding>
+                    <delimiters>
+                        <delimiter>@</delimiter>
+                    </delimiters>
+                    <useDefaultDelimiters>false</useDefaultDelimiters>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
