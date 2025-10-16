@@ -22,7 +22,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class EndpointValidator implements CommandLineRunner {
 
-    @Value("${delta.sharing.endpoint-fqdn:#{null}}")
+    @Value("${delta.sharing.endpoint-fqdn:}")
     private String endpointFqdn;
 
     private final Environment environment;

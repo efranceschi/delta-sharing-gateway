@@ -203,14 +203,23 @@
     <build>
         <finalName>${project.artifactId}</finalName>
         
-        <!-- Enable resource filtering for application.yml -->
+        <!-- Enable resource filtering for banner.txt only -->
         <resources>
+            <!-- Filter banner.txt to inject Maven properties -->
             <resource>
                 <directory>src/main/resources</directory>
                 <filtering>true</filtering>
                 <includes>
                     <include>banner.txt</include>
                 </includes>
+            </resource>
+            <!-- Copy all other resources WITHOUT filtering -->
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>false</filtering>
+                <excludes>
+                    <exclude>banner.txt</exclude>
+                </excludes>
             </resource>
         </resources>
         

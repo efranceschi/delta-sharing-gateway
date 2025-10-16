@@ -27,7 +27,7 @@ public class UserManagementController {
     
     private final UserManagementService userService;
     
-    @Value("${delta.sharing.endpoint-fqdn}")
+    @Value("${delta.sharing.endpoint-fqdn:}")
     private String deltaSharingEndpoint;
     
     @GetMapping
