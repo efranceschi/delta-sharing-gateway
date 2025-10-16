@@ -614,11 +614,37 @@ public class DeltaSharingService {
         // Return newline-delimited JSON (NDJSON) format
         StringBuilder response = new StringBuilder();
         
-        // Protocol line - Per Delta Sharing Protocol specification
-        ProtocolResponse protocol = ProtocolResponse.builder()
-                .minReaderVersion(1)
-                .build();
-        String protocolJson = String.format("{\"protocol\":%s}", toNdjson(protocol));
+        // Determine format based on table configuration
+        // CDF (Change Data Feed) typically uses the same format as the table
+        boolean useDeltaFormat = shouldUseDeltaFormat(tableName, table.getFormat(), null, "CDF Format Decision");
+        
+        // Protocol line
+        // For Delta format: include both minReaderVersion and minWriterVersion
+        // For Parquet format: include only minReaderVersion
+        // Reference: https://github.com/delta-io/delta-sharing/blob/main/PROTOCOL.md
+        // Note: Delta Sharing Protocol versions are different from Delta Lake Protocol versions
+        // Delta Sharing uses minReaderVersion=1 and minWriterVersion=2
+        ProtocolResponse.ProtocolResponseBuilder protocolBuilder = ProtocolResponse.builder()
+                .minReaderVersion(1);
+        
+        if (useDeltaFormat) {
+            // Delta format requires minWriterVersion
+            // Using minWriterVersion=2 for Delta Sharing Protocol
+            protocolBuilder.minWriterVersion(2);
+        }
+        
+        ProtocolResponse protocol = protocolBuilder.build();
+        String protocolJson;
+        if (useDeltaFormat) {
+            // Delta format: {"protocol": {"deltaProtocol": {...}}}
+            DeltaProtocolWrapper wrapper = DeltaProtocolWrapper.builder()
+                    .deltaProtocol(protocol)
+                    .build();
+            protocolJson = String.format("{\"protocol\":%s}", toNdjson(wrapper));
+        } else {
+            // Parquet format: {"protocol": {...}}
+            protocolJson = String.format("{\"protocol\":%s}", toNdjson(protocol));
+        }
         response.append(protocolJson).append("\n");
         
         // Metadata line
