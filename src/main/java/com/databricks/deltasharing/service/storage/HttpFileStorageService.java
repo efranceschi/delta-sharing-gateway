@@ -63,9 +63,9 @@ public class HttpFileStorageService implements FileStorageService {
     
     @Override
     public List<FileResponse> getTableFiles(DeltaTable table, Long version, 
-                                             List<String> predicateHints, Integer limitHint) {
-        log.debug("Getting HTTP files for table: {} at location: {}", 
-                  table.getName(), table.getLocation());
+                                             List<String> predicateHints, Integer limitHint, String startingTimestamp) {
+        log.debug("Getting HTTP files for table: {} at location: {} (startingTimestamp: {})", 
+                  table.getName(), table.getLocation(), startingTimestamp);
         
         if (!isAvailable()) {
             log.warn("HTTP storage service is not properly configured");

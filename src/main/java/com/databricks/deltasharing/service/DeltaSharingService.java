@@ -317,7 +317,7 @@ public class DeltaSharingService {
         List<String> partitionColumns = Arrays.asList(partCols);
         
         // Calculate table size and number of files
-        List<FileResponse> files = fileStorageService.getTableFiles(table, null, null, null);
+        List<FileResponse> files = fileStorageService.getTableFiles(table, null, null, null, null);
         long totalSize = files.stream()
                 .filter(f -> f.getSize() != null)
                 .mapToLong(FileResponse::getSize)
@@ -478,11 +478,14 @@ public class DeltaSharingService {
         response.append(metadataJson).append("\n");
         
         // Get files from storage service
+        // Note: startingTimestamp is used to get the earliest table version at or after the specified timestamp
+        // Reference: https://github.com/delta-io/delta-sharing/blob/main/PROTOCOL.md
         List<FileResponse> files = fileStorageService.getTableFiles(
                 table, 
                 request.getVersion(), 
                 request.getPredicateHints(), 
-                request.getLimitHint()
+                request.getLimitHint(),
+                request.getStartingTimestamp()
         );
         
         // Add file lines to response

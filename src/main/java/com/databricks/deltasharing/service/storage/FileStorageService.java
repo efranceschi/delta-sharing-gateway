@@ -18,10 +18,11 @@ public interface FileStorageService {
      * @param version Optional version of the table (null for latest)
      * @param predicateHints Optional predicate hints for filtering
      * @param limitHint Optional limit hint for the number of files
+     * @param startingTimestamp Optional timestamp to get earliest table version at or after this timestamp (ISO 8601 format)
      * @return List of FileResponse objects containing file metadata and access URLs
      */
     List<FileResponse> getTableFiles(DeltaTable table, Long version, 
-                                      List<String> predicateHints, Integer limitHint);
+                                      List<String> predicateHints, Integer limitHint, String startingTimestamp);
     
     /**
      * Generate or retrieve the schema for a table

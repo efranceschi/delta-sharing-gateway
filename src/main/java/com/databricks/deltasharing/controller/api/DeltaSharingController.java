@@ -212,10 +212,13 @@ public class DeltaSharingController {
         
         String response = deltaSharingService.queryTableMetadata(share, schema, table, request);
         
+        // Get current table version for header
+        Long tableVersion = deltaSharingService.queryTableVersion(share, schema, table);
+        
         // Build response headers
         ResponseEntity.BodyBuilder responseBuilder = ResponseEntity.ok()
                 .header("Delta-Sharing-Capabilities", DELTA_SHARING_CAPABILITIES)
-                .header("Delta-Table-Version", "1")
+                .header("Delta-Table-Version", String.valueOf(tableVersion))
                 .contentType(MediaType.parseMediaType("application/x-ndjson"));
         
         // Add includeEndStreamAction header if requested
@@ -312,10 +315,13 @@ public class DeltaSharingController {
         
         String response = deltaSharingService.queryTableData(share, schema, table, request);
         
+        // Get current table version for header
+        Long tableVersion = deltaSharingService.queryTableVersion(share, schema, table);
+        
         // Build response headers
         ResponseEntity.BodyBuilder responseBuilder = ResponseEntity.ok()
                 .header("Delta-Sharing-Capabilities", DELTA_SHARING_CAPABILITIES)
-                .header("Delta-Table-Version", "1")
+                .header("Delta-Table-Version", String.valueOf(tableVersion))
                 .contentType(MediaType.parseMediaType("application/x-ndjson"));
         
         // Add includeEndStreamAction header if requested
@@ -393,9 +399,12 @@ public class DeltaSharingController {
         String response = deltaSharingService.queryTableChanges(
                 share, schema, table, startingVersion, endingVersion);
         
+        // Get current table version for header
+        Long tableVersion = deltaSharingService.queryTableVersion(share, schema, table);
+        
         return ResponseEntity.ok()
                 .header("Delta-Sharing-Capabilities", DELTA_SHARING_CAPABILITIES)
-                .header("Delta-Table-Version", "1")
+                .header("Delta-Table-Version", String.valueOf(tableVersion))
                 .contentType(MediaType.parseMediaType("application/x-ndjson"))
                 .body(response);
     }

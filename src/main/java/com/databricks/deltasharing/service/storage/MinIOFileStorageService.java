@@ -165,7 +165,7 @@ public class MinIOFileStorageService implements FileStorageService {
     
     @Override
     public List<FileResponse> getTableFiles(DeltaTable table, Long version, 
-                                             List<String> predicateHints, Integer limitHint) {
+                                             List<String> predicateHints, Integer limitHint, String startingTimestamp) {
         if (log.isDebugEnabled()) {
             log.debug("Delta Sharing client requesting files from MinIO:");
             log.debug("  Table: {}.{}.{}", 
@@ -175,6 +175,7 @@ public class MinIOFileStorageService implements FileStorageService {
             log.debug("  Location: {}", table.getLocation());
             log.debug("  Format: {}", table.getFormat());
             log.debug("  Version: {}", version != null ? version : "latest");
+            log.debug("  Starting Timestamp: {}", startingTimestamp != null ? startingTimestamp : "none");
             log.debug("  Predicates: {}", predicateHints != null && !predicateHints.isEmpty() ? predicateHints : "none");
             log.debug("  Limit hint: {}", limitHint != null ? limitHint : "unlimited");
         }

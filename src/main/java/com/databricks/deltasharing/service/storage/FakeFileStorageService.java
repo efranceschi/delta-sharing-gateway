@@ -93,9 +93,9 @@ public class FakeFileStorageService implements FileStorageService {
     
     @Override
     public List<FileResponse> getTableFiles(DeltaTable table, Long version, 
-                                             List<String> predicateHints, Integer limitHint) {
-        log.debug("Generating fake files for table: {} (location: {})", 
-                  table.getName(), table.getLocation());
+                                             List<String> predicateHints, Integer limitHint, String startingTimestamp) {
+        log.debug("Generating fake files for table: {} (location: {}, startingTimestamp: {})", 
+                  table.getName(), table.getLocation(), startingTimestamp);
         
         // Generate more files to test data skipping
         int totalFileCount = DEFAULT_FILE_COUNT;
