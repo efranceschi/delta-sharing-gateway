@@ -336,17 +336,31 @@ public class DeltaSharingService {
         
         MetadataResponse metadata = MetadataResponse.builder()
                 .id(table.getUuid())
+                .name(table.getName())
                 .format(FormatResponse.builder()
                         .provider("parquet")
                         .build())
                 .schemaString(schemaString)
                 .partitionColumns(partitionColumns)
                 .configuration(new HashMap<>())
-                .size(totalSize)
-                .numFiles(numFiles)
                 .version(tableVersion)
                 .build();
-        String metadataJson = String.format("{\"metaData\":%s}", toNdjson(metadata));
+        
+        String metadataJson;
+        if (useDeltaFormat) {
+            // Delta format: {"metaData": {"size": ..., "numFiles": ..., "deltaMetadata": {...}}}
+            DeltaMetadataWrapper wrapper = DeltaMetadataWrapper.builder()
+                    .size(totalSize)
+                    .numFiles(numFiles)
+                    .deltaMetadata(metadata)
+                    .build();
+            metadataJson = String.format("{\"metaData\":%s}", toNdjson(wrapper));
+        } else {
+            // Parquet format: {"metaData": {...}}
+            metadata.setSize(totalSize);
+            metadata.setNumFiles(numFiles);
+            metadataJson = String.format("{\"metaData\":%s}", toNdjson(metadata));
+        }
         response.append(metadataJson);
         
         // Per Delta Sharing Protocol: /metadata endpoint returns exactly 2 lines (protocol + metadata)
@@ -484,6 +498,25 @@ public class DeltaSharingService {
             }
         }
         
+        // Get files from storage service first to calculate size and numFiles
+        // Note: startingTimestamp is used to get the earliest table version at or after the specified timestamp
+        // Reference: https://github.com/delta-io/delta-sharing/blob/main/PROTOCOL.md
+        List<FileResponse> files = fileStorageService.getTableFiles(
+                table, 
+                request.getVersion(), 
+                request.getPredicateHints(), 
+                request.getLimitHint(),
+                request.getStartingTimestamp()
+        );
+        
+        // Calculate table size and number of files
+        long totalSize = files.stream()
+                .filter(f -> f.getSize() != null)
+                .mapToLong(FileResponse::getSize)
+                .sum();
+        long numFiles = files.size();
+        
+        // Build metadata with wrapper for Delta format
         MetadataResponse metadata = MetadataResponse.builder()
                 .id(table.getUuid())
                 .name(table.getName())
@@ -494,29 +527,23 @@ public class DeltaSharingService {
                 .partitionColumns(partitionColumns)
                 .version(tableVersion)
                 .build();
+        
         String metadataJson;
         if (useDeltaFormat) {
-            // Delta format: {"metaData": {"deltaMetadata": {...}}}
+            // Delta format: {"metaData": {"size": ..., "numFiles": ..., "deltaMetadata": {...}}}
             DeltaMetadataWrapper wrapper = DeltaMetadataWrapper.builder()
+                    .size(totalSize)
+                    .numFiles(numFiles)
                     .deltaMetadata(metadata)
                     .build();
             metadataJson = String.format("{\"metaData\":%s}", toNdjson(wrapper));
         } else {
             // Parquet format: {"metaData": {...}}
+            metadata.setSize(totalSize);
+            metadata.setNumFiles(numFiles);
             metadataJson = String.format("{\"metaData\":%s}", toNdjson(metadata));
         }
         response.append(metadataJson).append("\n");
-        
-        // Get files from storage service
-        // Note: startingTimestamp is used to get the earliest table version at or after the specified timestamp
-        // Reference: https://github.com/delta-io/delta-sharing/blob/main/PROTOCOL.md
-        List<FileResponse> files = fileStorageService.getTableFiles(
-                table, 
-                request.getVersion(), 
-                request.getPredicateHints(), 
-                request.getLimitHint(),
-                request.getStartingTimestamp()
-        );
         
         // Add file lines to response
         Long minExpirationTimestamp = null;
