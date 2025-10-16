@@ -192,6 +192,71 @@ public class DeltaSharingService {
     }
     
     /**
+     * Determine the response format based on table type and client capabilities.
+     * 
+     * According to Delta Sharing Protocol:
+     * 1. If no format specified → use parquet (default)
+     * 2. If table is not delta → always use parquet
+     * 3. If client doesn't support delta → use parquet
+     * 4. If client prefers delta → use delta
+     * 5. If client prefers parquet but table has advanced features → use delta
+     * 
+     * Reference: https://github.com/delta-io/delta-sharing/blob/main/PROTOCOL.md#delta-sharing-capabilities-header
+     * 
+     * @param tableName Name of the table
+     * @param tableFormat Format of the table (e.g., "delta", "parquet")
+     * @param requestedFormat Requested format from client header (e.g., "delta,parquet")
+     * @param logPrefix Prefix for log messages (e.g., "Metadata Format Decision", "Format Decision")
+     * @return true if delta format should be used, false for parquet format
+     */
+    private boolean shouldUseDeltaFormat(String tableName, String tableFormat, String requestedFormat, String logPrefix) {
+        boolean isDeltaTable = "delta".equalsIgnoreCase(tableFormat);
+        
+        if (requestedFormat == null || requestedFormat.isEmpty()) {
+            // No format specified → use parquet (default)
+            log.debug("📊 {} - Table: {}, Format: {}, Requested: [none], Decision: PARQUET (default)", 
+                      logPrefix, tableName, tableFormat);
+            return false;
+        }
+        
+        if (!isDeltaTable) {
+            // Table is not delta → always use parquet
+            log.debug("📊 {} - Table: {}, Format: {}, Requested: [{}], Decision: PARQUET (non-delta table)", 
+                      logPrefix, tableName, tableFormat, requestedFormat);
+            return false;
+        }
+        
+        // Table is delta → check client capabilities and preferences
+        boolean clientSupportsDelta = requestedFormat.contains("delta");
+        
+        if (!clientSupportsDelta) {
+            // Client doesn't support delta → must use parquet
+            log.debug("📊 {} - Table: {}, Format: {}, Requested: [{}], ClientSupportsDelta: false, Decision: PARQUET (client incompatible)", 
+                      logPrefix, tableName, tableFormat, requestedFormat);
+            return false;
+        }
+        
+        // Client supports delta → check order of preference
+        String[] formats = requestedFormat.split(",");
+        String firstFormat = formats[0].trim().toLowerCase();
+        
+        if ("delta".equals(firstFormat)) {
+            // Client prefers delta → use delta
+            log.debug("📊 {} - Table: {}, Format: {}, Requested: [{}], FirstPreference: delta, Decision: DELTA (preferred by client)", 
+                      logPrefix, tableName, tableFormat, requestedFormat);
+            return true;
+        } else {
+            // Client prefers parquet but also supports delta
+            // Use delta if table has advanced features (assume all delta tables have advanced features)
+            // According to spec: "The server must respond in delta format if the table has advanced 
+            // features which are not compatible with the parquet format."
+            log.debug("📊 {} - Table: {}, Format: {}, Requested: [{}], FirstPreference: parquet, Decision: DELTA (table has advanced features)", 
+                      logPrefix, tableName, tableFormat, requestedFormat);
+            return true;
+        }
+    }
+    
+    /**
      * Query table metadata
      * Endpoint: GET /shares/{share}/schemas/{schema}/tables/{table}/metadata
      */
@@ -211,24 +276,8 @@ public class DeltaSharingService {
         StringBuilder response = new StringBuilder();
         
         // Determine response format based on table type and client request
-        boolean isDeltaTable = "delta".equalsIgnoreCase(table.getFormat());
         String requestedFormat = request != null ? request.getResponseFormat() : null;
-        
-        // According to Delta Sharing Protocol:
-        // - If client sends a list (e.g., "parquet,delta"), they support both formats
-        // - Server MUST respond in delta format for Delta tables (tables with advanced features)
-        // - Server MAY respond in parquet format for Parquet tables (simple tables)
-        boolean clientSupportsDelta = requestedFormat != null && 
-                                      (requestedFormat.contains("delta") || "delta".equalsIgnoreCase(requestedFormat));
-        
-        // Use delta format if:
-        // 1. Table is Delta AND client supports delta format (explicitly or in list), OR
-        // 2. Table is Delta AND client doesn't specify format (default to delta for delta tables)
-        boolean useDeltaFormat = isDeltaTable || 
-                                 (clientSupportsDelta || requestedFormat == null || requestedFormat.isEmpty());
-        
-        log.info("📊 Metadata Format Decision - Table: {}, Format: {}, Requested: {}, ClientSupportsDelta: {}, UseDeltaFormat: {}", 
-                  tableName, table.getFormat(), requestedFormat, clientSupportsDelta, useDeltaFormat);
+        boolean useDeltaFormat = shouldUseDeltaFormat(tableName, table.getFormat(), requestedFormat, "Metadata Format Decision");
         
         // Protocol line
         // For Delta format: include both minReaderVersion and minWriterVersion
@@ -366,25 +415,7 @@ public class DeltaSharingService {
         StringBuilder response = new StringBuilder();
         
         // Determine response format based on table type and client request
-        // Reference: https://github.com/delta-io/delta-sharing/blob/main/PROTOCOL.md#delta-sharing-capabilities-header
-        boolean isDeltaTable = "delta".equalsIgnoreCase(table.getFormat());
-        String requestedFormat = request.getResponseFormat();
-        
-        // According to Delta Sharing Protocol:
-        // - If client sends a list (e.g., "parquet,delta"), they support both formats
-        // - Server MUST respond in delta format for Delta tables (tables with advanced features)
-        // - Server MAY respond in parquet format for Parquet tables (simple tables)
-        boolean clientSupportsDelta = requestedFormat != null && 
-                                      (requestedFormat.contains("delta") || "delta".equalsIgnoreCase(requestedFormat));
-        
-        // Use delta format if:
-        // 1. Table is Delta AND client supports delta format (explicitly or in list), OR
-        // 2. Table is Delta AND client doesn't specify format (default to delta for delta tables)
-        boolean useDeltaFormat = isDeltaTable || 
-                                 (clientSupportsDelta || requestedFormat == null || requestedFormat.isEmpty());
-        
-        log.info("📊 Format Decision - Table: {}, Format: {}, Requested: {}, ClientSupportsDelta: {}, UseDeltaFormat: {}", 
-                  tableName, table.getFormat(), requestedFormat, clientSupportsDelta, useDeltaFormat);
+        boolean useDeltaFormat = shouldUseDeltaFormat(tableName, table.getFormat(), request.getResponseFormat(), "Format Decision");
         
         // Protocol line
         // For Delta format: include both minReaderVersion and minWriterVersion
