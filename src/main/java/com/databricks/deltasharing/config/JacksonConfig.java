@@ -3,6 +3,7 @@ package com.databricks.deltasharing.config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -12,27 +13,37 @@ import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
  * Configuração do Jackson ObjectMapper para formatação de JSON
  * 
  * Fornece dois ObjectMappers:
- * - objectMapper: Com pretty printing (2 espaços) para respostas JSON normais
+ * - objectMapper: Configurável via application.yml (pretty print ou compacto)
  * - ndjsonObjectMapper: Sem pretty printing para respostas NDJSON (Newline-Delimited JSON)
+ * 
+ * O formato de saída JSON pode ser controlado pela propriedade:
+ * delta.sharing.json.pretty-print (default: false)
  */
 @Configuration
 public class JacksonConfig {
     
+    @Value("${delta.sharing.json.pretty-print:false}")
+    private boolean prettyPrint;
+    
     /**
-     * ObjectMapper configurado com pretty printing para respostas JSON legíveis
+     * ObjectMapper configurado para respostas JSON
      * Usado em endpoints REST normais (GET /shares, GET /schemas, etc.)
-     * Indentação: 2 espaços
+     * 
+     * A formatação (pretty print) é configurável via application.yml:
+     * - delta.sharing.json.pretty-print: false (default) - JSON compacto em uma linha
+     * - delta.sharing.json.pretty-print: true - JSON formatado com indentação
      */
     @Bean
     @Primary
     public ObjectMapper objectMapper(Jackson2ObjectMapperBuilder builder) {
         ObjectMapper mapper = builder.build();
         
-        // Habilitar pretty printing
-        mapper.enable(SerializationFeature.INDENT_OUTPUT);
-        
-        // Configurar indentação de 2 espaços (default é 2, mas explicitando)
-        mapper.writerWithDefaultPrettyPrinter();
+        // Aplicar configuração de pretty printing
+        if (prettyPrint) {
+            mapper.enable(SerializationFeature.INDENT_OUTPUT);
+        } else {
+            mapper.disable(SerializationFeature.INDENT_OUTPUT);
+        }
         
         return mapper;
     }

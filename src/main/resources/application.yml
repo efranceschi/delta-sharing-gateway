@@ -46,6 +46,13 @@ delta:
       # Token expiration in days
       expiration-days: ${TOKEN_EXPIRATION_DAYS:365}
     
+    # JSON Response Configuration
+    json:
+      # Enable pretty printing for JSON responses (indentation and line breaks)
+      # Default: false (compact JSON for better compatibility and performance)
+      # Set to true for human-readable JSON responses (useful for debugging)
+      pretty-print: ${DELTA_SHARING_JSON_PRETTY_PRINT:false}
+    
     # Cache Configuration for Schema and Metadata
     cache:
       schema:
