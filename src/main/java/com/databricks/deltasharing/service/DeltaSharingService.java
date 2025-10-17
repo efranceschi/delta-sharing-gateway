@@ -1,5 +1,6 @@
 package com.databricks.deltasharing.service;
 
+import com.databricks.deltasharing.config.DeltaSharingFeaturesConfig;
 import com.databricks.deltasharing.dto.protocol.*;
 import com.databricks.deltasharing.exception.ResourceNotFoundException;
 import com.databricks.deltasharing.model.DeltaSchema;
@@ -34,6 +35,7 @@ public class DeltaSharingService {
     private final PaginationService paginationService;
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
     private final com.fasterxml.jackson.databind.ObjectMapper ndjsonObjectMapper;
+    private final DeltaSharingFeaturesConfig featuresConfig;
     
     /**
      * Constructor with dependency injection
@@ -46,7 +48,8 @@ public class DeltaSharingService {
             FileStorageService fileStorageService,
             PaginationService paginationService,
             com.fasterxml.jackson.databind.ObjectMapper objectMapper,
-            @Qualifier("ndjsonObjectMapper") com.fasterxml.jackson.databind.ObjectMapper ndjsonObjectMapper) {
+            @Qualifier("ndjsonObjectMapper") com.fasterxml.jackson.databind.ObjectMapper ndjsonObjectMapper,
+            DeltaSharingFeaturesConfig featuresConfig) {
         this.shareRepository = shareRepository;
         this.schemaRepository = schemaRepository;
         this.tableRepository = tableRepository;
@@ -54,6 +57,7 @@ public class DeltaSharingService {
         this.paginationService = paginationService;
         this.objectMapper = objectMapper;
         this.ndjsonObjectMapper = ndjsonObjectMapper;
+        this.featuresConfig = featuresConfig;
     }
     
     /**
@@ -550,16 +554,21 @@ public class DeltaSharingService {
         for (FileResponse file : files) {
             String fileJson;
             // Create a boolean to indicate whether to use deletion vectors (readerfeatures=deletionvectors)
+            // Check if deletion vectors feature is enabled in configuration first
             boolean useDeletionVectors = false;
-            if (request.getReaderFeatures() != null) {
+            if (featuresConfig.isDeletionVectorsEnabled() && request.getReaderFeatures() != null) {
                 // Supports possible multiple readerfeatures in a comma-separated list, in any order
                 String[] features = request.getReaderFeatures().split(",");
                 for (String feat : features) {
                     if (feat.trim().equals("deletionvectors")) {
                         useDeletionVectors = true;
+                        log.debug("🔧 Deletion Vectors requested by client and ENABLED in server configuration");
                         break;
                     }
                 }
+            } else if (!featuresConfig.isDeletionVectorsEnabled() && request.getReaderFeatures() != null 
+                       && request.getReaderFeatures().contains("deletionvectors")) {
+                log.debug("🚫 Deletion Vectors requested by client but DISABLED in server configuration - ignoring request");
             }
             if (useDeltaFormat && useDeletionVectors) {
                 // Delta format: {"file": {"id": "...", "size": ..., "expirationTimestamp": ..., "deltaSingleAction": {"add": {...}}}}
