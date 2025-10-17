@@ -388,7 +388,11 @@ public class DeltaSharingController {
                     case "includeendstreamaction":
                         request.setIncludeEndStreamAction("true".equals(value));
                         break;
-                    // Future: handle readerfeatures
+                    case "readerfeatures":
+                        // Store the comma-separated list of reader features
+                        // Examples: "deletionvectors", "columnmapping,timestampntz"
+                        request.setReaderFeatures(value);
+                        break;
                 }
             }
         }

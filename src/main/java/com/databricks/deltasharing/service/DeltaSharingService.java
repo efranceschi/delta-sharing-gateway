@@ -549,7 +549,19 @@ public class DeltaSharingService {
         Long minExpirationTimestamp = null;
         for (FileResponse file : files) {
             String fileJson;
-            if (useDeltaFormat) {
+            // Create a boolean to indicate whether to use deletion vectors (readerfeatures=deletionvectors)
+            boolean useDeletionVectors = false;
+            if (request.getReaderFeatures() != null) {
+                // Supports possible multiple readerfeatures in a comma-separated list, in any order
+                String[] features = request.getReaderFeatures().split(",");
+                for (String feat : features) {
+                    if (feat.trim().equals("deletionvectors")) {
+                        useDeletionVectors = true;
+                        break;
+                    }
+                }
+            }
+            if (useDeltaFormat && useDeletionVectors) {
                 // Delta format: {"file": {"id": "...", "size": ..., "expirationTimestamp": ..., "deltaSingleAction": {"add": {...}}}}
                 // Reference: https://github.com/delta-io/delta-sharing/blob/main/PROTOCOL.md
                 
