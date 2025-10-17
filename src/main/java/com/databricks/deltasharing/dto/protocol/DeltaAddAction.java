@@ -38,24 +38,25 @@ public class DeltaAddAction {
     private Long size;
     
     /**
+     * The time when this file was created/modified, as milliseconds since the epoch
+     * This is the modification timestamp of the file in the underlying storage system
+     * Reference: https://github.com/delta-io/delta-sharing/blob/main/PROTOCOL.md
+     */
+    private Long modificationTime;
+    
+    /**
+     * Whether this file contains data changes (true) or only metadata changes (false)
+     * When true, this indicates that the file contains actual data rows
+     * When false, this indicates that the file only contains metadata or is part of a transaction
+     * Default: true (most files contain data changes)
+     * Reference: https://github.com/delta-io/delta-sharing/blob/main/PROTOCOL.md
+     */
+    private Boolean dataChange;
+    
+    /**
      * File statistics as a JSON STRING (not an object)
      * Example: "{\"numRecords\":1,\"minValues\":{...},\"maxValues\":{...},\"nullCount\":{...}}"
      */
     private String stats;
-    
-    /**
-     * Information about deletion vectors for this file (optional)
-     * Only present when the file has deletion vectors and client requested readerfeatures=deletionvectors
-     * 
-     * Format:
-     * {
-     *   "storageType": "u",
-     *   "pathOrInlineDv": "vBn[lx{q8@P<9BNH/isA",
-     *   "offset": 1,
-     *   "sizeInBytes": 36,
-     *   "cardinality": 2
-     * }
-     */
-    private DeletionVectorDescriptor deletionVector;
 }
 

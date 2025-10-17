@@ -15,15 +15,18 @@ import lombok.NoArgsConstructor;
  * {
  *   "file": {
  *     "id": "...",
- *     "size": 573,
  *     "expirationTimestamp": 1652140800000,
  *     "deltaSingleAction": {
  *       "add": {
  *         "path": "https://...",
  *         "partitionValues": {...},
+ *         "size": 573,
+ *         "modificationTime": 1652140800000,
+ *         "dataChange": true,
  *         "stats": "{\"numRecords\":1,...}"
  *       }
- *     }
+ *     },
+ *     "url": "https://..."
  *   }
  * }
  */
@@ -36,35 +39,9 @@ public class DeltaSingleActionWrapper {
     
     /**
      * Unique identifier for the file
+     * A unique string for the file in a table
      */
     private String id;
-    
-    /**
-     * File size in bytes
-     */
-    private Long size;
-    
-    /**
-     * A unique string for the deletion vector file in a table.
-     * The same deletion vector file is guaranteed to have the same id across multiple requests.
-     * A client may cache the file content and use this id as a key to decide whether to use the cached file content.
-     * Optional: Only present when deletion vectors are enabled and the file has deletion vectors.
-     */
-    private String deletionVectorFileId;
-
-    /**
-     * The table version of the file.
-     * Returned when querying a table data with a version or timestamp parameter.
-     * Optional: Only present when querying with version/timestamp.
-     */
-    private Long version;
-
-    /**
-     * The unix timestamp corresponding to the table version of the file, in milliseconds.
-     * Returned when querying a table data with a version or timestamp parameter.
-     * Optional: Only present when querying with version/timestamp.
-     */
-    private Long timestamp;
 
     /**
      * The unix timestamp corresponding to the expiration of the url, in milliseconds.
@@ -74,8 +51,15 @@ public class DeltaSingleActionWrapper {
     private Long expirationTimestamp;
     
     /**
-     * Need to be parsed by a delta library as a delta single action, the path field is replaced by pr-signed url.
+     * Need to be parsed by a delta library as a delta single action, the path field is replaced by pre-signed url.
      */
     private DeltaSingleAction deltaSingleAction;
+    
+    /**
+     * Pre-signed URL for accessing the file
+     * This is the same URL that appears in deltaSingleAction.add.path
+     * Reference: https://github.com/delta-io/delta-sharing/blob/main/PROTOCOL.md#file-in-delta-format
+     */
+    private String url;
 }
 

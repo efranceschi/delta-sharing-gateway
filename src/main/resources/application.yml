@@ -53,15 +53,6 @@ delta:
       # Set to true for human-readable JSON responses (useful for debugging)
       pretty-print: ${DELTA_SHARING_JSON_PRETTY_PRINT:false}
     
-    # Advanced Delta Features Configuration
-    features:
-      # Enable Deletion Vectors support
-      # When enabled, server will respect readerfeatures=deletionvectors from clients
-      # When disabled, server will ignore deletionvectors requests and always return standard format
-      # Default: false (disabled for broader compatibility)
-      deletion-vectors:
-        enabled: ${DELTA_SHARING_DELETION_VECTORS_ENABLED:true}
-    
     # Cache Configuration for Schema and Metadata
     cache:
       schema:

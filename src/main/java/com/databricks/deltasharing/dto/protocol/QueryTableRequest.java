@@ -72,12 +72,4 @@ public class QueryTableRequest {
      * Reference: https://github.com/delta-io/delta-sharing/blob/main/PROTOCOL.md#includeendstreamaction
      */
     private Boolean includeEndStreamAction;
-    
-    /**
-     * Reader features requested by client (comma-separated list)
-     * Examples: "deletionvectors", "columnmapping", "timestampntz"
-     * Or combined: "deletionvectors,columnmapping,timestampntz"
-     * Reference: https://github.com/delta-io/delta-sharing/blob/main/PROTOCOL.md#advanced-delta-features
-     */
-    private String readerFeatures;
 }

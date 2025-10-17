@@ -1,6 +1,5 @@
 package com.databricks.deltasharing.service;
 
-import com.databricks.deltasharing.config.DeltaSharingFeaturesConfig;
 import com.databricks.deltasharing.dto.protocol.*;
 import com.databricks.deltasharing.exception.ResourceNotFoundException;
 import com.databricks.deltasharing.model.DeltaSchema;
@@ -35,7 +34,6 @@ public class DeltaSharingService {
     private final PaginationService paginationService;
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
     private final com.fasterxml.jackson.databind.ObjectMapper ndjsonObjectMapper;
-    private final DeltaSharingFeaturesConfig featuresConfig;
     
     /**
      * Constructor with dependency injection
@@ -48,8 +46,7 @@ public class DeltaSharingService {
             FileStorageService fileStorageService,
             PaginationService paginationService,
             com.fasterxml.jackson.databind.ObjectMapper objectMapper,
-            @Qualifier("ndjsonObjectMapper") com.fasterxml.jackson.databind.ObjectMapper ndjsonObjectMapper,
-            DeltaSharingFeaturesConfig featuresConfig) {
+            @Qualifier("ndjsonObjectMapper") com.fasterxml.jackson.databind.ObjectMapper ndjsonObjectMapper) {
         this.shareRepository = shareRepository;
         this.schemaRepository = schemaRepository;
         this.tableRepository = tableRepository;
@@ -57,7 +54,6 @@ public class DeltaSharingService {
         this.paginationService = paginationService;
         this.objectMapper = objectMapper;
         this.ndjsonObjectMapper = ndjsonObjectMapper;
-        this.featuresConfig = featuresConfig;
     }
     
     /**
@@ -569,24 +565,8 @@ public class DeltaSharingService {
         Long minExpirationTimestamp = null;
         for (FileResponse file : files) {
             String fileJson;
-            // Create a boolean to indicate whether to use deletion vectors (readerfeatures=deletionvectors)
-            // Check if deletion vectors feature is enabled in configuration first
-            boolean useDeletionVectors = false;
-            if (featuresConfig.isDeletionVectorsEnabled() && request.getReaderFeatures() != null) {
-                // Supports possible multiple readerfeatures in a comma-separated list, in any order
-                String[] features = request.getReaderFeatures().split(",");
-                for (String feat : features) {
-                    if (feat.trim().equals("deletionvectors")) {
-                        useDeletionVectors = true;
-                        log.debug("🔧 Deletion Vectors requested by client and ENABLED in server configuration");
-                        break;
-                    }
-                }
-            } else if (!featuresConfig.isDeletionVectorsEnabled() && request.getReaderFeatures() != null 
-                       && request.getReaderFeatures().contains("deletionvectors")) {
-                log.debug("🚫 Deletion Vectors requested by client but DISABLED in server configuration - ignoring request");
-            }
-            if (useDeltaFormat && useDeletionVectors) {
+            
+            if (useDeltaFormat) {
                 // Delta format: {"file": {"id": "...", "size": ..., "expirationTimestamp": ..., "deltaSingleAction": {"add": {...}}}}
                 // Reference: https://github.com/delta-io/delta-sharing/blob/main/PROTOCOL.md#file-in-delta-format
                 
@@ -600,74 +580,29 @@ public class DeltaSharingService {
                     }
                 }
                 
-                // Build the add action with deletion vector if applicable
-                DeltaAddAction.DeltaAddActionBuilder addActionBuilder = DeltaAddAction.builder()
+                // Build the add action
+                DeltaAddAction addAction = DeltaAddAction.builder()
                         .path(file.getUrl())  // URL goes in path field
                         .partitionValues(file.getPartitionValues())
                         .size(file.getSize())  // File size in bytes
-                        .stats(statsJson);  // stats as JSON STRING
-                
-                // Add deletion vector descriptor if deletion vectors are enabled
-                if (useDeletionVectors && file.getId() != null) {
-                    // Create a deletion vector descriptor
-                    // In a real implementation, this would come from the Delta log
-                    // For now, we create a sample descriptor for demonstration
-                    DeletionVectorDescriptor dvDescriptor = DeletionVectorDescriptor.builder()
-                            .storageType("u")  // UUID-based storage
-                            .pathOrInlineDv("dv-" + file.getId())  // Deterministic DV identifier
-                            .offset(0)  // Offset in the DV file
-                            .sizeInBytes(128)  // Size of the DV data
-                            .cardinality(0L)  // Number of deleted rows (0 = no deletions)
-                            .build();
-                    
-                    addActionBuilder.deletionVector(dvDescriptor);
-                    log.debug("🗑️ Adding deletion vector descriptor to add action for file: {}", file.getId());
-                }
-                
-                DeltaAddAction addAction = addActionBuilder.build();
+                        .modificationTime(System.currentTimeMillis())  // Current timestamp in milliseconds
+                        .dataChange(true)  // Default: true (indicates data changes)
+                        .stats(statsJson)  // stats as JSON STRING
+                        .build();
                 
                 // Build the deltaSingleAction
                 DeltaSingleAction singleAction = DeltaSingleAction.builder()
                         .add(addAction)
                         .build();
                 
-                // Build the wrapper with all file-level metadata
+                // Build the wrapper with file-level metadata
                 // Reference: https://github.com/delta-io/delta-sharing/blob/main/PROTOCOL.md#file-in-delta-format
-                DeltaSingleActionWrapper.DeltaSingleActionWrapperBuilder wrapperBuilder = DeltaSingleActionWrapper.builder()
+                DeltaSingleActionWrapper wrapper = DeltaSingleActionWrapper.builder()
                         .id(file.getId())
-                        .size(file.getSize())
                         .expirationTimestamp(file.getExpirationTimestamp())
-                        .deltaSingleAction(singleAction);
-                
-                // Add version if querying with version parameter
-                if (request.getVersion() != null) {
-                    wrapperBuilder.version(request.getVersion());
-                    log.debug("📋 Adding version {} to file response", request.getVersion());
-                }
-                
-                // Add timestamp if querying with timestamp parameter
-                if (request.getStartingTimestamp() != null) {
-                    try {
-                        // Convert timestamp string to unix timestamp in milliseconds
-                        // Assuming timestamp is in ISO 8601 format or unix timestamp string
-                        Long timestampMs = Long.parseLong(request.getStartingTimestamp());
-                        wrapperBuilder.timestamp(timestampMs);
-                        log.debug("🕒 Adding timestamp {} to file response", timestampMs);
-                    } catch (NumberFormatException e) {
-                        log.warn("⚠️ Failed to parse timestamp: {}", request.getStartingTimestamp());
-                    }
-                }
-                
-                // Add deletionVectorFileId if deletion vectors are enabled and file has DV
-                // This would need to come from the file metadata in the Delta log
-                // For now, we generate a deterministic ID based on file ID
-                if (useDeletionVectors && file.getId() != null) {
-                    String dvFileId = "dv-" + file.getId();
-                    wrapperBuilder.deletionVectorFileId(dvFileId);
-                    log.debug("🗑️ Adding deletion vector file ID: {}", dvFileId);
-                }
-                
-                DeltaSingleActionWrapper wrapper = wrapperBuilder.build();
+                        .deltaSingleAction(singleAction)
+                        .url(file.getUrl())
+                        .build();
                 
                 // Build the complete Delta file response per protocol specification
                 DeltaFileResponse deltaFileResponse = DeltaFileResponse.builder()
