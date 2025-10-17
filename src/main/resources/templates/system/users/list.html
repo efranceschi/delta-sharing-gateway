@@ -115,18 +115,42 @@
                                             <a class="db-action-item" th:data-href="@{/system/users/{id}/edit(id=${user.id})}" onclick="window.location.href=this.dataset.href">
                                                 <i class="fas fa-edit"></i> Edit
                                             </a>
-                                            <a class="db-action-item" 
-                                               th:if="${user.apiToken != null and user.active}"
-                                               th:data-href="@{/system/users/{id}/download-credentials(id=${user.id})}" 
-                                               onclick="window.location.href=this.dataset.href">
-                                                <i class="fas fa-download"></i> Download Credentials
-                                            </a>
                                             <div class="db-action-separator"></div>
-                                            <a class="db-action-item db-action-danger" onclick="confirmDelete(this)" 
-                                               th:data-href="@{/system/users/{id}/delete(id=${user.id})}"
-                                               th:data-name="${user.username}">
+                                            <!-- Token Management -->
+                                            <button class="db-action-item" 
+                                                    th:if="${user.apiToken == null and user.active}"
+                                                    onclick="generateToken(this)"
+                                                    th:data-user-id="${user.id}"
+                                                    th:data-username="${user.username}">
+                                                <i class="fas fa-key"></i> Generate Token
+                                            </button>
+                                            <button class="db-action-item" 
+                                                    th:if="${user.apiToken != null and user.active}"
+                                                    onclick="regenerateToken(this)"
+                                                    th:data-user-id="${user.id}"
+                                                    th:data-username="${user.username}">
+                                                <i class="fas fa-sync"></i> Regenerate Token
+                                            </button>
+                                            <button class="db-action-item db-action-danger" 
+                                                    th:if="${user.apiToken != null}"
+                                                    onclick="revokeToken(this)"
+                                                    th:data-href="@{/system/users/{id}/revoke-token(id=${user.id})}"
+                                                    th:data-username="${user.username}">
+                                                <i class="fas fa-ban"></i> Revoke Token
+                                            </button>
+                                            <button class="db-action-item" 
+                                                    th:if="${user.apiToken != null and user.active}"
+                                                    th:data-href="@{/system/users/{id}/download-credentials(id=${user.id})}" 
+                                                    onclick="window.location.href=this.dataset.href">
+                                                <i class="fas fa-download"></i> Download Credentials
+                                            </button>
+                                            <div class="db-action-separator"></div>
+                                            <button class="db-action-item db-action-danger" 
+                                                    onclick="confirmDelete(this)" 
+                                                    th:data-href="@{/system/users/{id}/delete(id=${user.id})}"
+                                                    th:data-name="${user.username}">
                                                 <i class="fas fa-trash"></i> Delete
-                                            </a>
+                                            </button>
                                         </div>
                                     </div>
                                 </td>
@@ -159,6 +183,89 @@
                     if (confirm('Are you sure you want to delete user "' + name + '"?')) {
                         window.location.href = href;
                     }
+                }
+                
+                // Token Management Functions
+                function generateToken(element) {
+                    const userId = element.dataset.userId;
+                    const username = element.dataset.username;
+                    
+                    if (!confirm('Generate a new API token for user "' + username + '"?')) {
+                        return;
+                    }
+                    
+                    // Close dropdown
+                    document.querySelectorAll('.db-actions-dropdown.show').forEach(dropdown => {
+                        dropdown.classList.remove('show');
+                    });
+                    
+                    performTokenGeneration(userId, username);
+                }
+                
+                function regenerateToken(element) {
+                    const userId = element.dataset.userId;
+                    const username = element.dataset.username;
+                    
+                    if (!confirm('Regenerate API token for user "' + username + '"?\n\nThe old token will be invalidated.')) {
+                        return;
+                    }
+                    
+                    // Close dropdown
+                    document.querySelectorAll('.db-actions-dropdown.show').forEach(dropdown => {
+                        dropdown.classList.remove('show');
+                    });
+                    
+                    performTokenGeneration(userId, username);
+                }
+                
+                function performTokenGeneration(userId, username) {
+                    // Get CSRF token from meta tag
+                    const csrfToken = document.querySelector('meta[name="_csrf"]')?.content;
+                    const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.content;
+                    
+                    const headers = {
+                        'Content-Type': 'application/json'
+                    };
+                    
+                    if (csrfToken && csrfHeader) {
+                        headers[csrfHeader] = csrfToken;
+                    }
+                    
+                    fetch('/system/users/' + userId + '/generate-token', {
+                        method: 'POST',
+                        headers: headers
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            return response.text().then(text => { 
+                                throw new Error(text || 'Failed to generate token') 
+                            });
+                        }
+                        return response.text();
+                    })
+                    .then(token => {
+                        alert('Token generated successfully for user "' + username + '"\n\nToken: ' + token + '\n\nLength: ' + token.length + ' characters\n\n⚠️ This is the only time you will see this token. Make sure to save it!');
+                        window.location.reload();
+                    })
+                    .catch(error => {
+                        alert('Error generating token: ' + error.message);
+                    });
+                }
+                
+                function revokeToken(element) {
+                    const href = element.dataset.href;
+                    const username = element.dataset.username;
+                    
+                    if (!confirm('Are you sure you want to revoke the API token for user "' + username + '"?\n\nThis action cannot be undone.')) {
+                        return;
+                    }
+                    
+                    // Close dropdown
+                    document.querySelectorAll('.db-actions-dropdown.show').forEach(dropdown => {
+                        dropdown.classList.remove('show');
+                    });
+                    
+                    window.location.href = href;
                 }
             </script>
         </th:block>
