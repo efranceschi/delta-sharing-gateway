@@ -80,6 +80,10 @@ class DeltaSharingTester:
             '7.2': ('test_7_2_query_table_metadata_delta', 'Query Table Metadata (Delta format)'),
             '7.3': ('test_7_3_query_table_metadata_with_end_stream_action_parquet', 'Query Table Metadata (Parquet + EndStreamAction)'),
             '7.4': ('test_7_4_query_table_metadata_with_end_stream_action_delta', 'Query Table Metadata (Delta + EndStreamAction)'),
+            '7.5': ('test_7_5_query_table_metadata_delta_with_readerfeatures', 'Query Table Metadata (Delta + readerfeatures)'),
+            '7.6': ('test_7_6_query_table_metadata_delta_with_deletion_vectors', 'Query Table Metadata (Delta + deletionvectors)'),
+            '7.7': ('test_7_7_query_table_metadata_delta_with_column_mapping', 'Query Table Metadata (Delta + columnmapping)'),
+            '7.8': ('test_7_8_query_table_metadata_delta_with_timestampntz', 'Query Table Metadata (Delta + timestampntz)'),
             '8': ('test_8_query_table_data_basic', 'Query Table Data (Basic)'),
             '8.1': ('test_8_1_query_table_data_parquet', 'Query Table Data (Parquet format)'),
             '8.2': ('test_8_2_query_table_data_delta', 'Query Table Data (Delta format)'),
@@ -91,6 +95,10 @@ class DeltaSharingTester:
             '8.8': ('test_8_8_query_table_data_with_end_stream_action_delta', 'Query Table Data (Delta + EndStreamAction)'),
             '8.9': ('test_8_9_query_table_data_with_predicates_parquet', 'Query Table Data (Parquet + predicateHints)'),
             '8.10': ('test_8_10_query_table_data_with_predicates_delta', 'Query Table Data (Delta + predicateHints)'),
+            '8.11': ('test_8_11_query_table_data_delta_with_readerfeatures', 'Query Table Data (Delta + readerfeatures)'),
+            '8.12': ('test_8_12_query_table_data_delta_with_deletion_vectors', 'Query Table Data (Delta + deletionvectors)'),
+            '8.13': ('test_8_13_query_table_data_delta_with_column_mapping', 'Query Table Data (Delta + columnmapping)'),
+            '8.14': ('test_8_14_query_table_data_delta_with_timestampntz', 'Query Table Data (Delta + timestampntz)'),
             '9': ('test_9_query_table_changes_parquet', 'Query Table Changes (CDF - Parquet format)'),
             '9.1': ('test_9_1_query_table_changes_delta', 'Query Table Changes (CDF - Delta format)'),
         }
@@ -574,6 +582,78 @@ class DeltaSharingTester:
             expect_ndjson=True
         )
     
+    def test_7_5_query_table_metadata_delta_with_readerfeatures(self):
+        """Test 7.5: Query Table Metadata (Delta + readerfeatures)"""
+        if not self.discovered_share or not self.discovered_schema or not self.discovered_table:
+            print(f"{Colors.WARNING}⚠ Skipping test 7.5: No share/schema/table discovered{Colors.ENDC}")
+            return
+        
+        self._execute_request(
+            test_number="7.5",
+            test_name="Query Table Metadata (Delta + readerfeatures)",
+            method="GET",
+            path=f"/shares/{self.discovered_share}/schemas/{self.discovered_schema}/tables/{self.discovered_table}/metadata",
+            headers={
+                "delta-sharing-capabilities": "responseformat=delta;readerfeatures=deletionvectors,columnmapping,timestampntz",
+                "Delta-Table-Version": "1"
+            },
+            expect_ndjson=True
+        )
+    
+    def test_7_6_query_table_metadata_delta_with_deletion_vectors(self):
+        """Test 7.6: Query Table Metadata (Delta + deletionvectors)"""
+        if not self.discovered_share or not self.discovered_schema or not self.discovered_table:
+            print(f"{Colors.WARNING}⚠ Skipping test 7.6: No share/schema/table discovered{Colors.ENDC}")
+            return
+        
+        self._execute_request(
+            test_number="7.6",
+            test_name="Query Table Metadata (Delta + deletionvectors)",
+            method="GET",
+            path=f"/shares/{self.discovered_share}/schemas/{self.discovered_schema}/tables/{self.discovered_table}/metadata",
+            headers={
+                "delta-sharing-capabilities": "responseformat=delta;readerfeatures=deletionvectors",
+                "Delta-Table-Version": "1"
+            },
+            expect_ndjson=True
+        )
+    
+    def test_7_7_query_table_metadata_delta_with_column_mapping(self):
+        """Test 7.7: Query Table Metadata (Delta + columnmapping)"""
+        if not self.discovered_share or not self.discovered_schema or not self.discovered_table:
+            print(f"{Colors.WARNING}⚠ Skipping test 7.7: No share/schema/table discovered{Colors.ENDC}")
+            return
+        
+        self._execute_request(
+            test_number="7.7",
+            test_name="Query Table Metadata (Delta + columnmapping)",
+            method="GET",
+            path=f"/shares/{self.discovered_share}/schemas/{self.discovered_schema}/tables/{self.discovered_table}/metadata",
+            headers={
+                "delta-sharing-capabilities": "responseformat=delta;readerfeatures=columnmapping",
+                "Delta-Table-Version": "1"
+            },
+            expect_ndjson=True
+        )
+    
+    def test_7_8_query_table_metadata_delta_with_timestampntz(self):
+        """Test 7.8: Query Table Metadata (Delta + timestampntz)"""
+        if not self.discovered_share or not self.discovered_schema or not self.discovered_table:
+            print(f"{Colors.WARNING}⚠ Skipping test 7.8: No share/schema/table discovered{Colors.ENDC}")
+            return
+        
+        self._execute_request(
+            test_number="7.8",
+            test_name="Query Table Metadata (Delta + timestampntz)",
+            method="GET",
+            path=f"/shares/{self.discovered_share}/schemas/{self.discovered_schema}/tables/{self.discovered_table}/metadata",
+            headers={
+                "delta-sharing-capabilities": "responseformat=delta;readerfeatures=timestampntz",
+                "Delta-Table-Version": "1"
+            },
+            expect_ndjson=True
+        )
+    
     def test_8_query_table_data_basic(self):
         """Test 8: Query Table Data (Basic)"""
         if not self.discovered_share or not self.discovered_schema or not self.discovered_table:
@@ -789,6 +869,78 @@ class DeltaSharingTester:
             expect_ndjson=True
         )
     
+    def test_8_11_query_table_data_delta_with_readerfeatures(self):
+        """Test 8.11: Query Table Data (Delta + readerfeatures)"""
+        if not self.discovered_share or not self.discovered_schema or not self.discovered_table:
+            print(f"{Colors.WARNING}⚠ Skipping test 8.11: No share/schema/table discovered{Colors.ENDC}")
+            return
+        
+        self._execute_request(
+            test_number="8.11",
+            test_name="Query Table Data (Delta + readerfeatures)",
+            method="POST",
+            path=f"/shares/{self.discovered_share}/schemas/{self.discovered_schema}/tables/{self.discovered_table}/query",
+            headers={
+                "delta-sharing-capabilities": "responseformat=delta;readerfeatures=deletionvectors,columnmapping,timestampntz"
+            },
+            json_body={},
+            expect_ndjson=True
+        )
+    
+    def test_8_12_query_table_data_delta_with_deletion_vectors(self):
+        """Test 8.12: Query Table Data (Delta + deletionvectors)"""
+        if not self.discovered_share or not self.discovered_schema or not self.discovered_table:
+            print(f"{Colors.WARNING}⚠ Skipping test 8.12: No share/schema/table discovered{Colors.ENDC}")
+            return
+        
+        self._execute_request(
+            test_number="8.12",
+            test_name="Query Table Data (Delta + deletionvectors)",
+            method="POST",
+            path=f"/shares/{self.discovered_share}/schemas/{self.discovered_schema}/tables/{self.discovered_table}/query",
+            headers={
+                "delta-sharing-capabilities": "responseformat=delta;readerfeatures=deletionvectors"
+            },
+            json_body={},
+            expect_ndjson=True
+        )
+    
+    def test_8_13_query_table_data_delta_with_column_mapping(self):
+        """Test 8.13: Query Table Data (Delta + columnmapping)"""
+        if not self.discovered_share or not self.discovered_schema or not self.discovered_table:
+            print(f"{Colors.WARNING}⚠ Skipping test 8.13: No share/schema/table discovered{Colors.ENDC}")
+            return
+        
+        self._execute_request(
+            test_number="8.13",
+            test_name="Query Table Data (Delta + columnmapping)",
+            method="POST",
+            path=f"/shares/{self.discovered_share}/schemas/{self.discovered_schema}/tables/{self.discovered_table}/query",
+            headers={
+                "delta-sharing-capabilities": "responseformat=delta;readerfeatures=columnmapping"
+            },
+            json_body={},
+            expect_ndjson=True
+        )
+    
+    def test_8_14_query_table_data_delta_with_timestampntz(self):
+        """Test 8.14: Query Table Data (Delta + timestampntz)"""
+        if not self.discovered_share or not self.discovered_schema or not self.discovered_table:
+            print(f"{Colors.WARNING}⚠ Skipping test 8.14: No share/schema/table discovered{Colors.ENDC}")
+            return
+        
+        self._execute_request(
+            test_number="8.14",
+            test_name="Query Table Data (Delta + timestampntz)",
+            method="POST",
+            path=f"/shares/{self.discovered_share}/schemas/{self.discovered_schema}/tables/{self.discovered_table}/query",
+            headers={
+                "delta-sharing-capabilities": "responseformat=delta;readerfeatures=timestampntz"
+            },
+            json_body={},
+            expect_ndjson=True
+        )
+    
     def test_9_query_table_changes_parquet(self):
         """Test 9: Query Table Changes (CDF - Parquet format)"""
         if not self.discovered_share or not self.discovered_schema or not self.discovered_table:
@@ -863,6 +1015,10 @@ class DeltaSharingTester:
         self.test_7_2_query_table_metadata_delta()
         self.test_7_3_query_table_metadata_with_end_stream_action_parquet()
         self.test_7_4_query_table_metadata_with_end_stream_action_delta()
+        self.test_7_5_query_table_metadata_delta_with_readerfeatures()
+        self.test_7_6_query_table_metadata_delta_with_deletion_vectors()
+        self.test_7_7_query_table_metadata_delta_with_column_mapping()
+        self.test_7_8_query_table_metadata_delta_with_timestampntz()
         self.test_8_query_table_data_basic()
         self.test_8_1_query_table_data_parquet()
         self.test_8_2_query_table_data_delta()
@@ -874,6 +1030,10 @@ class DeltaSharingTester:
         self.test_8_8_query_table_data_with_end_stream_action_delta()
         self.test_8_9_query_table_data_with_predicates_parquet()
         self.test_8_10_query_table_data_with_predicates_delta()
+        self.test_8_11_query_table_data_delta_with_readerfeatures()
+        self.test_8_12_query_table_data_delta_with_deletion_vectors()
+        self.test_8_13_query_table_data_delta_with_column_mapping()
+        self.test_8_14_query_table_data_delta_with_timestampntz()
         self.test_9_query_table_changes_parquet()
         self.test_9_1_query_table_changes_delta()
         
