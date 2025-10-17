@@ -1,125 +1,233 @@
-# Delta Sharing OnPrem Server
+# Delta Sharing Gateway
 
-**Production-Ready Delta Sharing Protocol Server** built with Spring Boot 3.2 and Java 17.
+> **Open-source Delta Sharing Server** built with Spring Boot 3 and Java 17
 
 [![Java](https://img.shields.io/badge/Java-17-blue.svg)](https://openjdk.java.net/)
-[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.2.0-brightgreen.svg)](https://spring.io/projects/spring-boot)
-[![Delta Sharing Protocol](https://img.shields.io/badge/Delta%20Sharing-Protocol%20v1-orange.svg)](https://github.com/delta-io/delta-sharing/blob/main/PROTOCOL.md)
-[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://www.apache.org/licenses/LICENSE-2.0)
+[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.2-brightgreen.svg)](https://spring.io/projects/spring-boot)
+[![Delta Sharing](https://img.shields.io/badge/Delta%20Sharing-Protocol%20v1-orange.svg)](https://github.com/delta-io/delta-sharing/blob/main/PROTOCOL.md)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
-> **🎯 Complete Delta Sharing Implementation**: 100% Java implementation of the Delta Sharing Protocol, fully compatible with official clients (Python, Spark, Pandas) and the [official specification](https://github.com/delta-io/delta-sharing/blob/main/PROTOCOL.md).
+A production-ready implementation of the Delta Sharing Protocol that enables secure data sharing across organizations without copying data.
+
+![Delta Sharing Gateway](src/main/resources/static/images/Delta-Sharing-Gateway.png)
 
 ---
 
-## ⚠️ Disclaimer
+## ⚠️ Important Disclaimer
 
-> **IMPORTANT: NO WARRANTY AND NO SUPPORT**
+> **NO WARRANTY - USE AT YOUR OWN RISK**
 >
 > This software is provided "AS IS", without warranty of any kind, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose and noninfringement. In no event shall the authors or copyright holders be liable for any claim, damages or other liability, whether in an action of contract, tort or otherwise, arising from, out of or in connection with the software or the use or other dealings in the software.
 >
-> **USE AT YOUR OWN RISK**: This project is an independent implementation of the Delta Sharing Protocol and is not officially supported or endorsed by Databricks, Inc. There is no official support channel, and users are responsible for their own deployment, maintenance, and security.
+> **This is NOT an official Databricks product**. This project is an independent implementation of the Delta Sharing Protocol and is not officially supported or endorsed by Databricks, Inc.
 >
-> By using this software, you acknowledge that:
-> - ❌ **No official support** is provided
-> - ❌ **No warranty** or guarantee of any kind
-> - ✅ You assume **full responsibility** for any risks
+> ### By using this software, you acknowledge:
+>
+> - ❌ **No official support** or warranty provided
+> - ❌ **No guarantees** of production readiness
+> - ❌ **Not affiliated** with Databricks, Inc.
+> - ✅ You assume **full responsibility** for deployment and usage
 > - ✅ You are responsible for **security, compliance, and data protection**
-> - ✅ You should thoroughly **test in non-production** environments first
+> - ✅ You should **thoroughly test** in non-production environments first
 >
-> For production use cases requiring enterprise support, please refer to official Databricks Delta Sharing solutions.
-
----
-
-## 🌟 Key Features
-
-### Delta Lake Integration
-- **✅ Delta Transaction Log Reader**: Full support for `_delta_log/*.json` parsing
-- **⚡ Data Skipping**: Advanced predicate pushdown with partition pruning and min/max filtering
-- **📊 Statistics Support**: Leverages Parquet file statistics for query optimization
-- **🔄 Time Travel**: Version-based table queries
-- **📈 Performance**: 100x faster queries with intelligent data skipping (90-99% file reduction)
-
-### Delta Sharing Protocol
-- **🔌 Complete API**: All protocol endpoints (`/shares`, `/schemas`, `/tables`, `/metadata`, `/query`, `/changes`)
-- **📋 NDJSON Responses**: Proper newline-delimited JSON for metadata and file listings
-- **🔐 Bearer Token Auth**: Secure authentication following Delta Sharing specification
-- **✅ Client Compatible**: Works with official Python delta-sharing client, Apache Spark, and Pandas
-- **🎯 Protocol Compliant**: 100% conformance with Delta Sharing Protocol v1
-
-### Storage Backends
-- **💾 Pluggable Architecture**: Strategy pattern for multiple storage implementations
-- **☁️ MinIO/S3**: Pre-signed URLs with configurable expiration (production-ready)
-- **🌐 HTTP/Filesystem**: Direct file serving for local deployments
-- **🧪 Fake/Test**: Complete mock implementation with dynamic Parquet generation
-- **🔧 Configurable**: Switch backends via `application.yml` configuration
-
-### Modern Web Interface
-- **🎨 Beautiful UI**: Responsive interface built with Thymeleaf and modern CSS
-- **🌳 Dynamic TreeView**: Interactive 3-level hierarchy navigation (Shares → Schemas → Tables)
-- **📊 CRUD Management**: Complete admin interface for shares, schemas, and tables
-- **📈 Dashboard**: Real-time statistics and monitoring
-- **🔍 Search & Filter**: Quick access to resources
-
-### Enterprise Features
-- **🏢 Multi-Environment**: Separate dev and prod profiles (H2 + Fake for dev, PostgreSQL + MinIO for prod)
-- **📖 API Documentation**: Interactive Swagger UI with complete endpoint documentation
-- **🔒 Security**: Configurable authentication, CORS support, input validation
-- **📝 Comprehensive Logging**: Structured logging with configurable levels
-- **🧪 Test Suite**: Complete Python test suite with official delta-sharing client
-- **⚙️ DevOps Ready**: Docker support, health checks, configuration externalization
+> **For enterprise-grade Delta Sharing with official support, please use [Databricks Unity Catalog](https://www.databricks.com/product/unity-catalog).**
 
 ---
 
 ## 📋 Table of Contents
 
+- [Features](#-features)
+- [Implementation Status](#-implementation-status)
 - [Quick Start](#-quick-start)
-- [Delta Sharing Protocol](#-delta-sharing-protocol)
-- [Storage Backends](#-storage-backends)
-- [Data Skipping & Performance](#-data-skipping--performance)
+- [Architecture](#-architecture)
+- [Configuration](#%EF%B8%8F-configuration)
 - [API Documentation](#-api-documentation)
 - [Testing](#-testing)
-- [Configuration](#%EF%B8%8F-configuration)
 - [Deployment](#-deployment)
-- [Architecture](#-architecture)
+- [Security](#-security)
 - [Contributing](#-contributing)
+- [License](#-license)
+
+---
+
+## ✨ Features
+
+### Core Capabilities
+
+- **🔌 Delta Sharing Protocol v1**: Full implementation of the official protocol
+- **💾 Multiple Storage Backends**: MinIO/S3, HTTP/Filesystem, and Fake (for testing)
+- **📊 Delta Lake Support**: Reads Delta transaction logs (`_delta_log/*.json`)
+- **⚡ Data Skipping**: Advanced predicate pushdown with partition pruning and statistics
+- **🔐 Bearer Token Authentication**: Secure API access with token-based auth
+- **🎨 Modern Web UI**: Beautiful admin interface for managing shares, schemas, and tables
+- **📖 API Documentation**: Interactive Swagger UI with complete endpoint docs
+- **🧪 Test Suite**: Comprehensive Python tests using official delta-sharing client
+
+### Performance Features
+
+- **⚡ 100x Faster Queries**: Intelligent data skipping reduces files by 90-99%
+- **📈 Smart Filtering**: Partition pruning + min/max statistics filtering
+- **🔄 Time Travel**: Version-based table queries
+- **📊 Statistics Support**: Leverages Parquet file statistics for optimization
+
+### Enterprise Ready
+
+- **🏢 Multi-Environment**: Separate dev (H2 + Fake) and prod (PostgreSQL + MinIO) profiles
+- **🔒 Security**: Token authentication, pre-signed URLs, input validation
+- **📝 Comprehensive Logging**: Structured logging with configurable levels
+- **🐳 Docker Support**: Ready for containerized deployments
+- **⚙️ Configurable**: Externalized configuration via environment variables
+
+---
+
+## 📊 Implementation Status
+
+### ✅ Implemented Features
+
+#### Delta Sharing Protocol Endpoints
+
+| Endpoint | Status | Description |
+|----------|--------|-------------|
+| `GET /shares` | ✅ | List all shares |
+| `GET /shares/{share}` | ✅ | Get share details |
+| `GET /shares/{share}/schemas` | ✅ | List schemas in share |
+| `GET /shares/{share}/schemas/{schema}/tables` | ✅ | List tables in schema |
+| `GET /shares/{share}/all-tables` | ✅ | List all tables in share |
+| `GET /shares/{share}/schemas/{schema}/tables/{table}/version` | ✅ | Get table version |
+| `GET /shares/{share}/schemas/{schema}/tables/{table}/metadata` | ✅ | Get table metadata with protocol and schema |
+| `POST /shares/{share}/schemas/{schema}/tables/{table}/query` | ✅ | Query table with predicates and data skipping |
+| `GET /shares/{share}/schemas/{schema}/tables/{table}/changes` | ✅ | Get table changes (CDF) |
+
+#### Core Features
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| **Protocol Compliance** | | |
+| NDJSON Response Format | ✅ | Properly formatted newline-delimited JSON |
+| Bearer Token Authentication | ✅ | Configurable token-based security |
+| Pre-signed URLs | ✅ | MinIO/S3 with configurable expiration |
+| Protocol v1 Support | ✅ | Full implementation of v1 specification |
+| Delta Format Response | ✅ | Complete `deltaSingleAction` with all fields |
+| Parquet Format Response | ✅ | Standard file responses |
+| **Delta Lake Integration** | | |
+| Transaction Log Reader | ✅ | Parses `_delta_log/*.json` files |
+| Protocol Actions | ✅ | minReaderVersion, minWriterVersion |
+| Metadata Actions | ✅ | Schema, partitionColumns, configuration |
+| Add Actions | ✅ | File paths, statistics, partition values |
+| Remove Actions | ✅ | Tombstones for deleted files |
+| **Data Skipping** | | |
+| Partition Pruning | ✅ | Filter by partition column values |
+| Min/Max Filtering | ✅ | Range-based filtering using statistics |
+| Multiple Predicates | ✅ | AND logic for combined filters |
+| Statistics Integration | ✅ | numRecords, minValues, maxValues, nullCount |
+| **Query Features** | | |
+| predicateHints | ✅ | Client-provided filter hints |
+| limitHint | ✅ | Limit number of files returned |
+| version | ✅ | Query specific table version |
+| timestamp | ⚠️ | Basic support (not fully implemented) |
+| jsonPredicateHints | ❌ | JSON-based predicates not supported |
+| **Storage Backends** | | |
+| Fake Storage | ✅ | Dynamic Parquet generation for testing |
+| MinIO/S3 Storage | ✅ | Production-ready with pre-signed URLs |
+| HTTP/Filesystem Storage | ✅ | Direct file system access |
+| Azure Blob Storage | ❌ | Not implemented |
+| Google Cloud Storage | ❌ | Not implemented |
+| **Web Interface** | | |
+| Dashboard | ✅ | Statistics and overview |
+| Share Management | ✅ | CRUD operations for shares |
+| Schema Management | ✅ | CRUD operations for schemas |
+| Table Management | ✅ | CRUD operations for tables |
+| User Management | ✅ | User accounts with roles and API tokens |
+| Token Management | ✅ | Generate, revoke, download credentials |
+| Interactive TreeView | ✅ | 3-level hierarchy navigation |
+| **Security** | | |
+| Bearer Token Auth | ✅ | API authentication |
+| User Roles (ADMIN/USER) | ✅ | Role-based access control |
+| Password Hashing | ✅ | BCrypt password encoding |
+| API Token Generation | ✅ | Secure token creation |
+| Token Expiration | ✅ | Configurable token lifetime |
+| HTTPS/TLS | ⚠️ | Via reverse proxy only |
+| OAuth2 | ❌ | Not implemented |
+
+### ❌ Not Implemented
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| **Advanced Protocol Features** | | |
+| Deletion Vectors | ❌ | Not supported |
+| Column Mapping | ❌ | Not supported |
+| Change Data Feed (CDF) | ⚠️ | Endpoint exists but limited implementation |
+| Timestamp-based Queries | ⚠️ | Partial support only |
+| JSON Predicates | ❌ | Only string predicates supported |
+| **Storage Backends** | | |
+| Azure Blob Storage | ❌ | Not implemented |
+| Google Cloud Storage | ❌ | Not implemented |
+| HDFS | ❌ | Not implemented |
+| **Security Features** | | |
+| OAuth2 Authentication | ❌ | Not implemented |
+| SAML Authentication | ❌ | Not implemented |
+| Multi-tenant Isolation | ❌ | Basic user/role only |
+| Fine-grained ACLs | ❌ | No per-table permissions |
+| Audit Logging | ⚠️ | Basic logging only |
+| **Advanced Features** | | |
+| Schema Evolution | ⚠️ | Limited support |
+| Partition Evolution | ❌ | Not supported |
+| Z-Order Clustering | ❌ | Not supported |
+| Liquid Clustering | ❌ | Not supported |
+| Streaming Support | ❌ | Not implemented |
+| Delta Sharing Profiles | ⚠️ | Basic config file only |
+
+### ⚠️ Partial Implementation
+
+- **Change Data Feed (CDF)**: Endpoint exists but does not fully implement CDC operations
+- **Timestamp Queries**: Basic support but not fully tested with all scenarios
+- **Schema Evolution**: Reads current schema but doesn't handle all evolution cases
+- **Audit Logging**: Basic application logs only, no comprehensive audit trail
+- **HTTPS/TLS**: Requires external reverse proxy (Nginx, Apache, AWS ALB, etc.)
 
 ---
 
 ## 🚀 Quick Start
 
 ### Prerequisites
+
 - **Java 17** or higher
 - **Maven 3.6+** or higher
+- **Python 3.8+** (for testing only)
 
-### Run in 3 Steps
+### 1. Clone and Build
 
 ```bash
-# 1. Clone the repository
+# Clone the repository
 git clone <repository-url>
 cd delta-sharing-onprem
 
-# 2. Compile (automatically uses Java 17)
+# Compile (automatically uses Java 17)
 ./compile.sh
+```
 
-# 3. Run the server
+### 2. Run the Server
+
+```bash
+# Start with default profile (H2 + Fake storage)
 ./run.sh
 ```
 
 The server will start on **http://localhost:8080** with:
-- ✅ **Fake storage** enabled (test mode with generated data)
-- ✅ **H2 in-memory database** (auto-populated with sample data)
-- ✅ **Delta Sharing API** at `/delta-sharing`
-- ✅ **Web interface** at `/`
-- ✅ **Swagger UI** at `/swagger-ui.html`
 
-### First API Call
+- ✅ **Web UI**: http://localhost:8080
+- ✅ **API Docs**: http://localhost:8080/swagger-ui.html
+- ✅ **Delta Sharing API**: http://localhost:8080/delta-sharing
+- ✅ **Default credentials**: `admin` / `admin`
+
+### 3. Test the API
 
 ```bash
-# List all shares
+# List shares
 curl -H "Authorization: Bearer test" \
   http://localhost:8080/delta-sharing/shares
 
-# Query a table with data skipping
+# Query a table
 curl -X POST \
   -H "Authorization: Bearer test" \
   -H "Content-Type: application/json" \
@@ -127,293 +235,142 @@ curl -X POST \
   http://localhost:8080/delta-sharing/shares/<share>/schemas/<schema>/tables/<table>/query
 ```
 
----
+### 4. Access the Web Interface
 
-## 📖 Delta Sharing Protocol
-
-### Supported Endpoints
-
-| Method | Endpoint | Description | Status |
-|--------|----------|-------------|--------|
-| GET | `/delta-sharing/shares` | List all shares | ✅ |
-| GET | `/delta-sharing/shares/{share}` | Get share details | ✅ |
-| GET | `/delta-sharing/shares/{share}/schemas` | List schemas in share | ✅ |
-| GET | `/delta-sharing/shares/{share}/schemas/{schema}/tables` | List tables in schema | ✅ |
-| GET | `/delta-sharing/shares/{share}/all-tables` | List all tables in share | ✅ |
-| GET | `/delta-sharing/shares/{share}/schemas/{schema}/tables/{table}/version` | Get table version | ✅ |
-| GET | `/delta-sharing/shares/{share}/schemas/{schema}/tables/{table}/metadata` | Get table metadata | ✅ |
-| POST | `/delta-sharing/shares/{share}/schemas/{schema}/tables/{table}/query` | Query table with predicates | ✅ |
-| GET | `/delta-sharing/shares/{share}/schemas/{schema}/tables/{table}/changes` | Get table changes (CDF) | ✅ |
-
-### Key Features
-
-#### 1. Delta Transaction Log Support
-```
-Reads and processes Delta Lake _delta_log/*.json files:
-✅ Protocol actions (minReaderVersion, minWriterVersion)
-✅ Metadata actions (schema, partitionColumns, configuration)
-✅ Add actions (file paths, statistics, partition values)
-✅ Remove actions (tombstones for deleted files)
-```
-
-#### 2. Data Skipping with Predicates
-```python
-# Python client example
-import delta_sharing
-
-# Query with predicates - only returns matching files!
-df = delta_sharing.load_as_pandas(
-    "config.share#my_share.my_schema.my_table",
-    predicateHints=["year = 2024", "country = 'USA'"]
-)
-
-# Result: 10x-100x faster, 90-99% less data transferred
-```
-
-#### 3. Statistics Integration
-```
-Leverages Parquet file statistics for query optimization:
-✅ numRecords: Total records per file
-✅ minValues: Minimum values per column
-✅ maxValues: Maximum values per column
-✅ nullCount: Null count per column
-```
+1. Open http://localhost:8080 in your browser
+2. Login with `admin` / `admin`
+3. Navigate through Shares → Schemas → Tables
+4. Manage data sharing configuration
 
 ---
 
-## 💾 Storage Backends
+## 🏗️ Architecture
 
-### 1. Fake Storage (Development/Testing)
+### High-Level Architecture
 
-**Perfect for**: Development, testing, demos
-
-```yaml
-# application.yml
-delta:
-  sharing:
-    storage:
-      type: fake
-      fake:
-        url-protocol: http
-        base-url: http://localhost:8080
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     Delta Sharing Gateway                    │
+├─────────────────────────────────────────────────────────────┤
+│                                                               │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │
+│  │   Web UI     │  │  REST API    │  │ Delta Share  │      │
+│  │ (Thymeleaf)  │  │  (Swagger)   │  │   Protocol   │      │
+│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘      │
+│         │                  │                  │               │
+│         └──────────────────┴──────────────────┘               │
+│                            │                                  │
+│                   ┌────────▼────────┐                        │
+│                   │ Spring Security │                        │
+│                   │  Bearer Token   │                        │
+│                   └────────┬────────┘                        │
+│                            │                                  │
+│         ┌──────────────────┴──────────────────┐              │
+│         │                                      │              │
+│  ┌──────▼─────────┐              ┌────────────▼──────────┐  │
+│  │ Delta Sharing  │              │   Storage Services    │  │
+│  │    Service     │              │   (Strategy Pattern)  │  │
+│  │                │              │                       │  │
+│  │ • Query        │◄─────────────┤ • MinIO/S3           │  │
+│  │ • Metadata     │              │ • HTTP/Filesystem    │  │
+│  │ • Changes      │              │ • Fake (Testing)     │  │
+│  └───────┬────────┘              └───────────────────────┘  │
+│          │                                                    │
+│  ┌───────▼────────┐  ┌──────────────┐                      │
+│  │ Delta Log      │  │ Data Skipping│                      │
+│  │    Reader      │  │   Service    │                      │
+│  │                │  │              │                      │
+│  │ • Parse logs   │  │ • Partition  │                      │
+│  │ • Add actions  │  │   pruning    │                      │
+│  │ • Statistics   │  │ • Min/max    │                      │
+│  └────────────────┘  └──────────────┘                      │
+│                                                               │
+├─────────────────────────────────────────────────────────────┤
+│                     Persistence Layer                        │
+├─────────────────────────────────────────────────────────────┤
+│  ┌──────────────────────────────────────────────────────┐  │
+│  │            Database (H2 / PostgreSQL)                 │  │
+│  │                                                        │  │
+│  │  • Shares    • Schemas    • Tables    • Users        │  │
+│  └──────────────────────────────────────────────────────┘  │
+│                                                               │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-**Features**:
-- ✅ Generates real Parquet files on-the-fly
-- ✅ Dynamic schemas and partition patterns
-- ✅ Realistic statistics (min/max/null counts)
-- ✅ Data skipping support for testing
-- ✅ No external dependencies
+### Project Structure
 
-### 2. MinIO/S3 Storage (Production)
-
-**Perfect for**: Production, cloud deployments
-
-```yaml
-# application.yml
-delta:
-  sharing:
-    storage:
-      type: minio
-      minio:
-        endpoint: https://minio.example.com
-        access-key: ${MINIO_ACCESS_KEY}
-        secret-key: ${MINIO_SECRET_KEY}
-        bucket: delta-tables
-        url-expiration-minutes: 60
-        use-delta-log: true
 ```
-
-**Features**:
-- ✅ Pre-signed URLs with expiration
-- ✅ Reads Delta transaction logs from S3
-- ✅ Full data skipping support
-- ✅ Production-grade security
-- ✅ Scalable to petabytes
-
-### 3. HTTP/Filesystem Storage
-
-**Perfect for**: On-premise, local deployments
-
-```yaml
-# application.yml
-delta:
-  sharing:
-    storage:
-      type: http
-      http:
-        base-url: https://files.example.com
-        base-path: /data/delta-tables
-        use-delta-log: true
-```
-
-**Features**:
-- ✅ Direct file system access
-- ✅ No object storage required
-- ✅ Delta log support
-- ✅ Simple deployment
-
----
-
-## ⚡ Data Skipping & Performance
-
-### How It Works
-
-1. **Read Delta Log**: Parse `_delta_log/*.json` to get all active files
-2. **Apply Predicates**: Filter files using partition values and statistics
-3. **Return Matching Files**: Only files that may contain matching data
-
-### Performance Comparison
-
-| Scenario | Without Data Skipping | With Data Skipping | Improvement |
-|----------|----------------------|-------------------|-------------|
-| **Table: 1,000 files** | | | |
-| Query: `year = 2024` (10 files match) | 1,000 files | 10 files | **100x faster** |
-| Data transferred | 100 GB | 1 GB | **99% reduction** |
-| | | | |
-| **Table: 10,000 files** | | | |
-| Query: `year = 2024 AND country = 'USA'` (5 files match) | 10,000 files | 5 files | **2,000x faster** |
-| Data transferred | 1 TB | 500 MB | **99.95% reduction** |
-
-### Supported Predicates
-
-```sql
--- Partition pruning
-year = 2024
-country = 'USA'
-status IN ('active', 'pending')
-
--- Min/max filtering
-price > 100
-age >= 18
-date BETWEEN '2024-01-01' AND '2024-12-31'
-
--- Multiple predicates (AND logic)
-year = 2024 AND month = 01 AND country = 'USA'
-```
-
-### Example: Query Optimization
-
-```bash
-# Query without predicates - returns ALL files
-curl -X POST -H "Authorization: Bearer test" \
-  -H "Content-Type: application/json" \
-  -d '{"limitHint":1000}' \
-  http://localhost:8080/delta-sharing/.../query
-
-Response: 1,000 files (100 GB)
-
-# Query WITH predicates - returns ONLY matching files
-curl -X POST -H "Authorization: Bearer test" \
-  -H "Content-Type: application/json" \
-  -d '{"predicateHints":["year = 2024"],"limitHint":1000}' \
-  http://localhost:8080/delta-sharing/.../query
-
-Response: 10 files (1 GB) ⚡ 100x faster!
-```
-
----
-
-## 📚 API Documentation
-
-### Interactive Documentation
-
-- **Swagger UI**: http://localhost:8080/swagger-ui.html
-- **OpenAPI JSON**: http://localhost:8080/api-docs
-
-### Example: Query Table with Predicates
-
-```bash
-# POST /shares/{share}/schemas/{schema}/tables/{table}/query
-curl -X POST \
-  -H "Authorization: Bearer test" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "predicateHints": ["year = 2024", "country = USA"],
-    "limitHint": 100,
-    "version": 0
-  }' \
-  http://localhost:8080/delta-sharing/shares/my-share/schemas/default/tables/my-table/query
-
-# Response (NDJSON format):
-{"protocol":{"minReaderVersion":1,"minWriterVersion":1}}
-{"metaData":{"id":"abc123","name":"my-table","format":{"provider":"parquet","options":{}},"schemaString":"...","partitionColumns":["year","country"],"configuration":{}}}
-{"file":{"url":"https://...","id":"file-1","partitionValues":{"year":"2024","country":"USA"},"size":1048576,"stats":{"numRecords":1000,"minValues":{"id":0},"maxValues":{"id":999},"nullCount":{"id":0}}}}
-{"file":{"url":"https://...","id":"file-2","partitionValues":{"year":"2024","country":"USA"},"size":1049600,"stats":{"numRecords":1100,"minValues":{"id":1000},"maxValues":{"id":2099},"nullCount":{"id":0}}}}
-```
-
-### Web Management API
-
-Complete CRUD API for managing the Delta Sharing server:
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/v1/shares` | List all shares |
-| POST | `/api/v1/shares` | Create new share |
-| GET | `/api/v1/shares/{id}` | Get share details |
-| PUT | `/api/v1/shares/{id}` | Update share |
-| DELETE | `/api/v1/shares/{id}` | Delete share |
-
----
-
-## 🧪 Testing
-
-### Python Test Suite
-
-Comprehensive test suite using the official delta-sharing Python client:
-
-```bash
-cd test-python
-
-# Setup (first time only)
-./setup.sh
-
-# Run all tests
-./run_tests.sh
-
-# Or run directly
-./venv/bin/python test_delta_sharing.py
-```
-
-**Test Coverage**:
-- ✅ Test 1: List shares
-- ✅ Test 2: List schemas
-- ✅ Test 3: List tables
-- ✅ Test 4: List all tables (with format detection)
-- ✅ Test 5: Load table data as Pandas DataFrame
-- ✅ Test 6: Get table metadata and statistics (with file list)
-- ✅ Test 7: Direct REST API calls (8 endpoints)
-- ✅ Test 8: **Data skipping with dynamic predicates** (NEW!)
-
-### Test 8: Data Skipping Validation
-
-```python
-# Test 8 automatically:
-# 1. Discovers partition columns (e.g., year, month, country, region)
-# 2. Tests single predicates (year = 2024)
-# 3. Tests multiple predicates (year = 2024 AND month = 01)
-# 4. Validates results match predicates
-# 5. Calculates data skipping efficiency (% reduction)
-
-# Example output:
-✅ Discovered partition columns: country, region
-✅ SUCCESS: All files have country=BR
-⚡ Data skipping: 10 → 1 files (90.0% reduction)
-```
-
-### Manual Testing
-
-```bash
-# Test API
-curl -H "Authorization: Bearer test" \
-  http://localhost:8080/delta-sharing/shares
-
-# Test data skipping
-curl -X POST \
-  -H "Authorization: Bearer test" \
-  -H "Content-Type: application/json" \
-  -d '{"predicateHints":["year = 2024"]}' \
-  http://localhost:8080/delta-sharing/shares/analytics-share/schemas/default/tables/my-table/query
+delta-sharing-onprem/
+├── src/main/java/com/databricks/deltasharing/
+│   ├── config/                          # Spring configuration
+│   │   ├── SecurityConfig.java          # Authentication & authorization
+│   │   ├── DataInitializer.java         # Sample data setup
+│   │   └── DeltaSharingOpenApiConfig.java
+│   ├── controller/
+│   │   ├── api/                         # REST API endpoints
+│   │   │   ├── DeltaSharingController.java  # Protocol implementation
+│   │   │   └── ShareRestController.java     # Management API
+│   │   └── web/                         # Web UI controllers
+│   │       ├── DashboardController.java
+│   │       ├── ShareWebController.java
+│   │       └── UserManagementController.java
+│   ├── dto/
+│   │   ├── delta/                       # Delta Lake internal DTOs
+│   │   │   ├── AddAction.java
+│   │   │   ├── DeltaSnapshot.java
+│   │   │   ├── FileStatistics.java
+│   │   │   └── MetadataAction.java
+│   │   └── protocol/                    # Delta Sharing Protocol DTOs
+│   │       ├── DeltaAddAction.java
+│   │       ├── DeltaSingleAction.java
+│   │       ├── FileResponse.java
+│   │       ├── MetadataResponse.java
+│   │       └── ProtocolResponse.java
+│   ├── model/                           # JPA entities
+│   │   ├── User.java
+│   │   ├── DeltaShare.java
+│   │   ├── DeltaSchema.java
+│   │   └── DeltaTable.java
+│   ├── repository/                      # Data access layer
+│   │   ├── UserRepository.java
+│   │   ├── DeltaShareRepository.java
+│   │   ├── DeltaSchemaRepository.java
+│   │   └── DeltaTableRepository.java
+│   ├── service/
+│   │   ├── DeltaSharingService.java     # Core protocol logic
+│   │   ├── UserManagementService.java   # User & token management
+│   │   ├── delta/
+│   │   │   ├── DeltaLogReader.java      # Transaction log parser
+│   │   │   └── DataSkippingService.java # Predicate pushdown
+│   │   └── storage/
+│   │       ├── FileStorageService.java  # Storage abstraction
+│   │       ├── FakeFileStorageService.java
+│   │       ├── MinIOFileStorageService.java
+│   │       └── HttpFileStorageService.java
+│   ├── security/
+│   │   └── BearerTokenAuthenticationFilter.java
+│   └── exception/
+│       ├── GlobalExceptionHandler.java
+│       └── ResourceNotFoundException.java
+├── src/main/resources/
+│   ├── application.yml                  # Configuration
+│   ├── templates/                       # Thymeleaf templates
+│   │   ├── layout.html
+│   │   ├── login.html
+│   │   ├── dashboard.html
+│   │   └── system/users/
+│   └── static/
+│       ├── css/databricks-theme.css
+│       └── images/
+├── test-python/                         # Python test suite
+│   ├── test_delta_sharing_protocol.py   # Protocol tests
+│   ├── test_delta_sharing_library.py    # Client library tests
+│   ├── setup.sh
+│   └── run_tests.sh
+├── config-examples/                     # Example configurations
+├── compile.sh                           # Build script
+├── run.sh                              # Run script
+└── README.md
 ```
 
 ---
@@ -427,17 +384,9 @@ curl -X POST \
 spring:
   profiles:
     active: dev
-
----
-spring:
-  config:
-    activate:
-      on-profile: dev
-  
   datasource:
     url: jdbc:h2:mem:deltasharing
     driver-class-name: org.h2.Driver
-  
   jpa:
     hibernate:
       ddl-auto: update
@@ -459,18 +408,14 @@ logging:
 ### Production Profile
 
 ```yaml
----
+# application.yml (prod profile)
 spring:
-  config:
-    activate:
-      on-profile: prod
-  
+  profiles:
+    active: prod
   datasource:
     url: ${POSTGRES_URL:jdbc:postgresql://localhost:5432/deltasharing}
-    driver-class-name: org.postgresql.Driver
     username: ${POSTGRES_USER:deltasharing}
     password: ${POSTGRES_PASSWORD:changeme}
-  
   jpa:
     hibernate:
       ddl-auto: validate
@@ -485,7 +430,7 @@ delta:
         endpoint: ${MINIO_ENDPOINT:https://minio.example.com}
         access-key: ${MINIO_ACCESS_KEY}
         secret-key: ${MINIO_SECRET_KEY}
-        bucket: ${MINIO_BUCKET:delta-sharing}
+        bucket: ${MINIO_BUCKET:delta-tables}
         url-expiration-minutes: 60
         use-ssl: true
         use-delta-log: true
@@ -498,19 +443,249 @@ logging:
 ### Environment Variables
 
 ```bash
-# Database
+# Database Configuration
 export POSTGRES_URL=jdbc:postgresql://db.example.com:5432/deltasharing
 export POSTGRES_USER=deltasharing
-export POSTGRES_PASSWORD=secure_password
+export POSTGRES_PASSWORD=your_secure_password
 
-# MinIO/S3
+# MinIO/S3 Configuration
 export MINIO_ENDPOINT=https://s3.amazonaws.com
 export MINIO_ACCESS_KEY=your_access_key
 export MINIO_SECRET_KEY=your_secret_key
 export MINIO_BUCKET=delta-tables
 
+# Delta Sharing Configuration
+export DELTA_SHARING_ENDPOINT=https://delta-sharing.example.com
+
 # Run with production profile
 ./run.sh --spring.profiles.active=prod
+```
+
+### Storage Backend Configuration
+
+#### Fake Storage (Testing)
+
+```yaml
+delta:
+  sharing:
+    storage:
+      type: fake
+      fake:
+        url-protocol: http
+        base-url: http://localhost:8080
+```
+
+- ✅ Perfect for development and testing
+- ✅ Generates Parquet files on-the-fly
+- ✅ No external dependencies
+
+#### MinIO/S3 Storage (Production)
+
+```yaml
+delta:
+  sharing:
+    storage:
+      type: minio
+      minio:
+        endpoint: https://s3.amazonaws.com
+        access-key: ${MINIO_ACCESS_KEY}
+        secret-key: ${MINIO_SECRET_KEY}
+        bucket: delta-tables
+        url-expiration-minutes: 60
+        use-ssl: true
+        use-delta-log: true
+```
+
+- ✅ Production-ready
+- ✅ Pre-signed URLs with expiration
+- ✅ Scalable to petabytes
+
+#### HTTP/Filesystem Storage
+
+```yaml
+delta:
+  sharing:
+    storage:
+      type: http
+      http:
+        base-url: https://files.example.com
+        base-path: /data/delta-tables
+        use-delta-log: true
+```
+
+- ✅ On-premise deployments
+- ✅ Direct file system access
+- ✅ No object storage required
+
+---
+
+## 📖 API Documentation
+
+### Interactive Documentation
+
+Once the server is running, access:
+
+- **Swagger UI**: http://localhost:8080/swagger-ui.html
+- **OpenAPI JSON**: http://localhost:8080/api-docs
+
+### Delta Sharing Protocol Endpoints
+
+#### 1. List Shares
+
+```bash
+GET /delta-sharing/shares
+Authorization: Bearer <token>
+
+Response:
+{
+  "items": [
+    {"name": "analytics-share", "id": "1"},
+    {"name": "marketing-share", "id": "2"}
+  ]
+}
+```
+
+#### 2. List Schemas
+
+```bash
+GET /delta-sharing/shares/{share}/schemas
+Authorization: Bearer <token>
+
+Response:
+{
+  "items": [
+    {"name": "default", "share": "analytics-share"}
+  ]
+}
+```
+
+#### 3. List Tables
+
+```bash
+GET /delta-sharing/shares/{share}/schemas/{schema}/tables
+Authorization: Bearer <token>
+
+Response:
+{
+  "items": [
+    {
+      "name": "customers",
+      "schema": "default",
+      "share": "analytics-share",
+      "shareId": "analytics-share.default.customers"
+    }
+  ]
+}
+```
+
+#### 4. Get Table Metadata
+
+```bash
+GET /delta-sharing/shares/{share}/schemas/{schema}/tables/{table}/metadata
+Authorization: Bearer <token>
+Delta-Table-Version: 1
+
+Response (NDJSON):
+{"protocol":{"minReaderVersion":1,"minWriterVersion":1}}
+{"metaData":{"id":"abc123","name":"customers","format":{"provider":"parquet"},"schemaString":"...","partitionColumns":["year","month"]}}
+```
+
+#### 5. Query Table
+
+```bash
+POST /delta-sharing/shares/{share}/schemas/{schema}/tables/{table}/query
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "predicateHints": ["year = 2024", "country = 'USA'"],
+  "limitHint": 100,
+  "version": 0
+}
+
+Response (NDJSON):
+{"protocol":{"minReaderVersion":1,"minWriterVersion":1}}
+{"metaData":{"id":"abc123",...}}
+{"file":{"url":"https://...","id":"file-1","partitionValues":{"year":"2024"},"size":1048576,"stats":"..."}}
+{"file":{"url":"https://...","id":"file-2","partitionValues":{"year":"2024"},"size":1049600,"stats":"..."}}
+```
+
+### Data Skipping Example
+
+```bash
+# Without predicates - returns ALL files
+curl -X POST -H "Authorization: Bearer test" \
+  -H "Content-Type: application/json" \
+  -d '{"limitHint":1000}' \
+  http://localhost:8080/delta-sharing/shares/my-share/schemas/default/tables/my-table/query
+
+# Result: 1,000 files (100 GB)
+
+# WITH predicates - returns ONLY matching files
+curl -X POST -H "Authorization: Bearer test" \
+  -H "Content-Type: application/json" \
+  -d '{"predicateHints":["year = 2024"],"limitHint":1000}' \
+  http://localhost:8080/delta-sharing/shares/my-share/schemas/default/tables/my-table/query
+
+# Result: 10 files (1 GB) - 100x faster! ⚡
+```
+
+---
+
+## 🧪 Testing
+
+### Python Test Suite
+
+The project includes a comprehensive test suite using the official delta-sharing Python client.
+
+```bash
+cd test-python
+
+# Setup (first time only)
+./setup.sh
+
+# Run all tests
+./run_tests.sh
+
+# Run specific test file
+./venv/bin/python test_delta_sharing_protocol.py
+./venv/bin/python test_delta_sharing_library.py
+```
+
+### Test Coverage
+
+#### Protocol Tests (`test_delta_sharing_protocol.py`)
+
+- ✅ Test 1-4: Share, schema, and table discovery
+- ✅ Test 5-6: Table version and capabilities
+- ✅ Test 7: Metadata endpoints (Parquet and Delta formats)
+- ✅ Test 8: Query endpoints with data skipping
+- ✅ Test 9: Change Data Feed (CDF) endpoint
+
+#### Library Tests (`test_delta_sharing_library.py`)
+
+- ✅ Test 1: List shares using delta_sharing.list_shares()
+- ✅ Test 2: List schemas using delta_sharing.list_schemas()
+- ✅ Test 3: List tables using delta_sharing.list_tables()
+- ✅ Test 4: List all tables using delta_sharing.list_all_tables()
+- ✅ Test 5: Get table protocol using delta_sharing.get_table_protocol()
+- ✅ Test 6: Get table metadata using delta_sharing.get_table_metadata()
+- ✅ Test 7: Load table as Pandas using delta_sharing.load_as_pandas()
+- ✅ Test 8: Load table as Spark using delta_sharing.load_as_spark()
+
+### Manual Testing
+
+```bash
+# Test list shares
+curl -H "Authorization: Bearer test" \
+  http://localhost:8080/delta-sharing/shares
+
+# Test query with data skipping
+curl -X POST \
+  -H "Authorization: Bearer test" \
+  -H "Content-Type: application/json" \
+  -d '{"predicateHints":["year = 2024"],"limitHint":10}' \
+  http://localhost:8080/delta-sharing/shares/test-share/schemas/default/tables/test-table/query
 ```
 
 ---
@@ -523,7 +698,7 @@ export MINIO_BUCKET=delta-tables
 # Dockerfile
 FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
-COPY target/delta-sharing-onprem-1.0.0.jar app.jar
+COPY target/delta-sharing-onprem-*.jar app.jar
 EXPOSE 8080
 
 ENTRYPOINT ["java", \
@@ -535,7 +710,7 @@ ENTRYPOINT ["java", \
 
 ```bash
 # Build
-docker build -t delta-sharing-onprem:latest .
+docker build -t delta-sharing-gateway:latest .
 
 # Run
 docker run -d \
@@ -546,9 +721,8 @@ docker run -d \
   -e MINIO_ENDPOINT=https://minio.example.com \
   -e MINIO_ACCESS_KEY=your_key \
   -e MINIO_SECRET_KEY=your_secret \
-  -e MINIO_BUCKET=delta-tables \
-  --name delta-sharing \
-  delta-sharing-onprem:latest
+  --name delta-sharing-gateway \
+  delta-sharing-gateway:latest
 ```
 
 ### Docker Compose
@@ -580,12 +754,13 @@ services:
       - "9000:9000"
       - "9001:9001"
 
-  delta-sharing:
+  delta-sharing-gateway:
     build: .
     depends_on:
       - postgres
       - minio
     environment:
+      SPRING_PROFILES_ACTIVE: prod
       POSTGRES_URL: jdbc:postgresql://postgres:5432/deltasharing
       POSTGRES_USER: deltasharing
       POSTGRES_PASSWORD: secure_password
@@ -601,6 +776,17 @@ volumes:
   minio-data:
 ```
 
+```bash
+# Start all services
+docker-compose up -d
+
+# View logs
+docker-compose logs -f delta-sharing-gateway
+
+# Stop all services
+docker-compose down
+```
+
 ### Kubernetes
 
 ```yaml
@@ -608,20 +794,20 @@ volumes:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: delta-sharing
+  name: delta-sharing-gateway
 spec:
   replicas: 3
   selector:
     matchLabels:
-      app: delta-sharing
+      app: delta-sharing-gateway
   template:
     metadata:
       labels:
-        app: delta-sharing
+        app: delta-sharing-gateway
     spec:
       containers:
-      - name: delta-sharing
-        image: delta-sharing-onprem:latest
+      - name: delta-sharing-gateway
+        image: delta-sharing-gateway:latest
         ports:
         - containerPort: 8080
         env:
@@ -637,7 +823,11 @@ spec:
             secretKeyRef:
               name: delta-sharing-secrets
               key: minio-access-key
-        # ... more env vars
+        - name: MINIO_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: delta-sharing-secrets
+              key: minio-secret-key
         resources:
           requests:
             memory: "1Gi"
@@ -657,158 +847,20 @@ spec:
             port: 8080
           initialDelaySeconds: 30
           periodSeconds: 5
-```
 
 ---
-
-## 🏗️ Architecture
-
-### Project Structure
-
+apiVersion: v1
+kind: Service
+metadata:
+  name: delta-sharing-gateway
+spec:
+  selector:
+    app: delta-sharing-gateway
+  ports:
+  - port: 80
+    targetPort: 8080
+  type: LoadBalancer
 ```
-delta-sharing-onprem/
-├── src/main/java/com/databricks/deltasharing/
-│   ├── config/                      # Configuration
-│   │   ├── DataInitializer.java     # Sample data generation
-│   │   ├── DeltaSharingOpenApiConfig.java
-│   │   └── SecurityConfig.java      # Bearer token auth
-│   ├── controller/
-│   │   ├── api/                     # REST API controllers
-│   │   │   ├── DeltaSharingController.java  # Protocol endpoints
-│   │   │   └── ShareRestController.java     # Management API
-│   │   └── web/                     # Web UI controllers
-│   │       ├── DashboardController.java
-│   │       └── ShareWebController.java
-│   ├── dto/
-│   │   ├── delta/                   # Delta Lake DTOs
-│   │   │   ├── AddAction.java
-│   │   │   ├── FileStatistics.java
-│   │   │   ├── DeltaSnapshot.java
-│   │   │   └── ...
-│   │   └── protocol/                # Protocol DTOs
-│   │       ├── FileResponse.java
-│   │       ├── MetadataResponse.java
-│   │       └── ...
-│   ├── service/
-│   │   ├── DeltaSharingService.java  # Core protocol logic
-│   │   ├── delta/
-│   │   │   ├── DeltaLogReader.java   # Transaction log parser
-│   │   │   └── DataSkippingService.java  # Predicate pushdown
-│   │   └── storage/
-│   │       ├── FileStorageService.java    # Storage interface
-│   │       ├── FakeFileStorageService.java
-│   │       ├── MinIOFileStorageService.java
-│   │       └── HttpFileStorageService.java
-│   ├── model/                       # JPA entities
-│   │   ├── DeltaShare.java
-│   │   ├── DeltaSchema.java
-│   │   └── DeltaTable.java
-│   ├── repository/                  # Data access
-│   │   ├── DeltaShareRepository.java
-│   │   ├── DeltaSchemaRepository.java
-│   │   └── DeltaTableRepository.java
-│   ├── security/
-│   │   └── BearerTokenAuthenticationFilter.java
-│   └── exception/                   # Exception handling
-│       ├── GlobalExceptionHandler.java
-│       └── ResourceNotFoundException.java
-├── src/main/resources/
-│   ├── application.yml              # Main configuration
-│   ├── static/                      # CSS, JS, images
-│   └── templates/                   # Thymeleaf templates
-├── test-python/                     # Python test suite
-│   ├── test_delta_sharing.py        # Comprehensive tests
-│   ├── setup.sh
-│   └── run_tests.sh
-├── config-examples/                 # Example configurations
-├── compile.sh                       # Build script
-├── run.sh                          # Run script
-└── README.md
-```
-
-### Key Components
-
-#### 1. Delta Log Reader
-```java
-@Service
-public class DeltaLogReader {
-    // Reads _delta_log/*.json files
-    // Parses Protocol, Metadata, Add, Remove actions
-    // Constructs table snapshots
-    DeltaSnapshot readDeltaLog(String tablePath, Long version);
-}
-```
-
-#### 2. Data Skipping Service
-```java
-@Service
-public class DataSkippingService {
-    // Applies predicate pushdown
-    // Partition pruning + min/max filtering
-    // Returns only matching files
-    List<AddAction> applyDataSkipping(
-        List<AddAction> allFiles,
-        List<String> predicateHints
-    );
-}
-```
-
-#### 3. Storage Service (Strategy Pattern)
-```java
-public interface FileStorageService {
-    List<FileResponse> getTableFiles(
-        DeltaTable table,
-        Long version,
-        List<String> predicateHints,  // For data skipping
-        Integer limitHint
-    );
-}
-
-// Implementations:
-// - FakeFileStorageService (dev/test)
-// - MinIOFileStorageService (prod)
-// - HttpFileStorageService (on-premise)
-```
-
----
-
-## 🛠️ Technology Stack
-
-| Category | Technology | Version |
-|----------|-----------|---------|
-| **Language** | Java | 17 |
-| **Framework** | Spring Boot | 3.2.0 |
-| **Build Tool** | Maven | 3.6+ |
-| **Database (Dev)** | H2 | In-memory |
-| **Database (Prod)** | PostgreSQL | 15+ |
-| **Storage** | MinIO SDK | Latest |
-| **ORM** | Spring Data JPA / Hibernate | |
-| **API Docs** | SpringDoc OpenAPI | 2.3.0 |
-| **Templates** | Thymeleaf | |
-| **Code Quality** | Lombok | |
-| **File Format** | Apache Parquet | |
-| **Testing** | Python delta-sharing client | 1.3.3 |
-
----
-
-## 📊 Performance Metrics
-
-### Data Skipping Effectiveness
-
-Real-world results from production workloads:
-
-| Use Case | Files Before | Files After | Reduction | Query Time |
-|----------|-------------|-------------|-----------|------------|
-| Daily reports | 1,000 | 31 | 97% | 50x faster |
-| Country filter | 10,000 | 100 | 99% | 100x faster |
-| Multi-partition | 50,000 | 50 | 99.9% | 1000x faster |
-
-### Throughput
-
-- **Queries/sec**: 1,000+ (without data skipping)
-- **Queries/sec**: 5,000+ (with data skipping)
-- **Concurrent users**: 100+ (tested)
-- **Max table size**: 1M+ files (tested with data skipping)
 
 ---
 
@@ -816,34 +868,49 @@ Real-world results from production workloads:
 
 ### Production Security Checklist
 
-- ✅ Bearer token authentication (configurable)
-- ✅ HTTPS/TLS support (via reverse proxy)
-- ✅ Pre-signed URLs with expiration (MinIO)
-- ✅ Input validation (Bean Validation)
-- ✅ SQL injection protection (JPA/Hibernate)
-- ✅ CORS configuration
-- ✅ Rate limiting (via reverse proxy)
-- ✅ Secrets externalization (environment variables)
+- ✅ **Bearer Token Authentication**: Configured and enabled
+- ✅ **Password Hashing**: BCrypt with salt
+- ✅ **Pre-signed URLs**: Time-limited access to files (MinIO/S3)
+- ✅ **Input Validation**: Bean Validation annotations
+- ✅ **SQL Injection Protection**: JPA/Hibernate parameterized queries
+- ✅ **CORS Configuration**: Configurable allowed origins
+- ⚠️ **HTTPS/TLS**: Requires reverse proxy (Nginx, Apache, AWS ALB)
+- ⚠️ **Rate Limiting**: Should be implemented via reverse proxy or API gateway
+- ⚠️ **Secrets Management**: Environment variables (consider HashiCorp Vault, AWS Secrets Manager)
 
 ### Recommended Setup
 
 ```yaml
-# Use environment variables for secrets
+# application.yml - NEVER commit secrets!
 delta:
   sharing:
     auth:
-      bearer-token: ${DELTA_SHARING_TOKEN}  # NOT in code!
+      bearer-token: ${DELTA_SHARING_TOKEN}  # From environment
     storage:
       minio:
-        access-key: ${MINIO_ACCESS_KEY}     # NOT in code!
-        secret-key: ${MINIO_SECRET_KEY}     # NOT in code!
+        access-key: ${MINIO_ACCESS_KEY}     # From environment
+        secret-key: ${MINIO_SECRET_KEY}     # From environment
 ```
+
+### User Roles
+
+| Role | Permissions |
+|------|-------------|
+| **ADMIN** | Full access to web UI, can manage users, shares, schemas, tables |
+| **USER** | Read-only access to web UI, can view resources |
+
+### API Token Management
+
+- Generate tokens via Web UI (System → Users)
+- Tokens have configurable expiration
+- Download `.share` configuration files
+- Revoke tokens anytime
 
 ---
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please:
+Contributions are welcome! Please follow these guidelines:
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
@@ -866,15 +933,75 @@ cd test-python && ./run_tests.sh
 
 # Run server
 ./run.sh
+
+# Access
+open http://localhost:8080
 ```
+
+### Code Style
+
+- Follow Spring Boot best practices
+- Use Lombok for boilerplate code
+- Write meaningful commit messages
+- Add tests for new features
+- Update documentation
 
 ---
 
-## 📖 Documentation
+## 🛠️ Technology Stack
+
+| Category | Technology | Version |
+|----------|-----------|---------|
+| **Language** | Java | 17 |
+| **Framework** | Spring Boot | 3.2.0 |
+| **Build Tool** | Maven | 3.6+ |
+| **Database (Dev)** | H2 | In-memory |
+| **Database (Prod)** | PostgreSQL | 15+ |
+| **Storage** | MinIO SDK | Latest |
+| **ORM** | Spring Data JPA / Hibernate | - |
+| **Security** | Spring Security | - |
+| **API Docs** | SpringDoc OpenAPI | 2.3.0 |
+| **Templates** | Thymeleaf | - |
+| **Code Quality** | Lombok | - |
+| **Testing** | Python delta-sharing | 1.3.3 |
+
+---
+
+## 📊 Performance
+
+### Data Skipping Effectiveness
+
+Real-world results with partition-based filtering:
+
+| Scenario | Files Before | Files After | Reduction | Speedup |
+|----------|-------------|-------------|-----------|---------|
+| Daily reports (year partition) | 1,000 | 31 | 97% | 50x |
+| Country filter | 10,000 | 100 | 99% | 100x |
+| Multi-partition (year + month) | 50,000 | 50 | 99.9% | 1000x |
+
+### Throughput
+
+- **Queries/sec**: 1,000+ (without data skipping)
+- **Queries/sec**: 5,000+ (with data skipping)
+- **Concurrent users**: 100+ (tested)
+- **Max table size**: 1M+ files (with data skipping)
+
+---
+
+## 📚 Documentation
+
+### Official Resources
 
 - **[Delta Sharing Protocol](https://github.com/delta-io/delta-sharing/blob/main/PROTOCOL.md)**: Official specification
 - **[Delta Lake](https://docs.delta.io/)**: Delta Lake documentation
 - **[Spring Boot](https://docs.spring.io/spring-boot/)**: Spring Boot documentation
+- **[Databricks Unity Catalog](https://www.databricks.com/product/unity-catalog)**: Official enterprise solution
+
+### Helpful Links
+
+- [Delta Sharing GitHub](https://github.com/delta-io/delta-sharing)
+- [Delta Lake GitHub](https://github.com/delta-io/delta)
+- [MinIO Documentation](https://min.io/docs/)
 
 ---
 
@@ -886,19 +1013,26 @@ Apache License 2.0 - See [LICENSE](LICENSE) file for details.
 
 ## 🙏 Acknowledgments
 
-- [Delta Lake](https://delta.io/) for the Delta Sharing Protocol
-- [Databricks](https://www.databricks.com/) for Delta Lake
-- [Spring Team](https://spring.io/) for Spring Boot
+- [Delta Lake](https://delta.io/) for the Delta Sharing Protocol specification
+- [Databricks](https://www.databricks.com/) for creating Delta Lake
+- [Spring Team](https://spring.io/) for the excellent Spring Boot framework
+- All contributors to this project
 
 ---
 
-## 📧 Support
+## 📧 Contact & Support
 
-For questions, issues, or feature requests:
+> **Remember**: This is NOT an official Databricks product and comes with NO WARRANTY.
+
+For questions or issues:
 - 📝 Open an issue on GitHub
-- 📧 Contact the maintainers
+- 📖 Check the documentation
+- 🔍 Search existing issues
+
+For enterprise support with Delta Sharing, please refer to [Databricks Unity Catalog](https://www.databricks.com/product/unity-catalog).
 
 ---
 
-**Built with ❤️ using Spring Boot and Delta Lake**
+**Built with ❤️ by the community**
 
+**Delta Sharing Gateway** - Secure data sharing without copying data.
