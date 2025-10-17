@@ -1,7 +1,10 @@
 package com.databricks.deltasharing.controller.api;
 
+import com.github.benmanes.caffeine.cache.stats.CacheStats;
 import io.micrometer.core.instrument.*;
 import io.micrometer.core.instrument.search.Search;
+import org.springframework.cache.CacheManager;
+import org.springframework.cache.caffeine.CaffeineCache;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,6 +23,7 @@ import java.util.stream.Collectors;
 public class MetricsController {
 
     private final MeterRegistry meterRegistry;
+    private final CacheManager cacheManager;
     
     // Cache para armazenar histórico de requisições (última hora)
     private static final int MAX_HISTORY_SIZE = 60; // 60 pontos (1 por minuto)
@@ -28,8 +32,9 @@ public class MetricsController {
     // Cache para armazenar estatísticas por URI
     private final Map<String, UriStats> uriStatsMap = new ConcurrentHashMap<>();
     
-    public MetricsController(MeterRegistry meterRegistry) {
+    public MetricsController(MeterRegistry meterRegistry, CacheManager cacheManager) {
         this.meterRegistry = meterRegistry;
+        this.cacheManager = cacheManager;
     }
     
     @PostConstruct
@@ -57,39 +62,111 @@ public class MetricsController {
         return result;
     }
     
-    private Map<String, Object> getCacheMetrics() {
-        Map<String, Object> cacheStats = new HashMap<>();
+    @GetMapping("/cache")
+    public Map<String, Object> getCacheDetails() {
+        Map<String, Object> result = new HashMap<>();
         
-        // Usar arrays para permitir modificação em lambda
-        final long[] totalHits = {0};
-        final long[] totalMisses = {0};
+        // Lista de caches a serem monitorados
+        String[] cacheNames = {
+            "tableSchemas", 
+            "partitionColumns", 
+            "minioHealthCheck", 
+            "databaseHealthCheck", 
+            "jvmHealthCheck", 
+            "minioClusterHealthCheck"
+        };
         
-        // Coletar métricas de todos os caches
-        Search.in(meterRegistry)
-            .name("cache.gets")
-            .meters()
-            .forEach(meter -> {
-                if (meter instanceof io.micrometer.core.instrument.Counter) {
-                    io.micrometer.core.instrument.Counter counter = (io.micrometer.core.instrument.Counter) meter;
-                    String result = counter.getId().getTag("result");
+        List<Map<String, Object>> cacheList = new ArrayList<>();
+        long totalHits = 0;
+        long totalMisses = 0;
+        
+        for (String cacheName : cacheNames) {
+            try {
+                org.springframework.cache.Cache cache = cacheManager.getCache(cacheName);
+                if (cache instanceof CaffeineCache) {
+                    CaffeineCache caffeineCache = (CaffeineCache) cache;
+                    com.github.benmanes.caffeine.cache.Cache<Object, Object> nativeCache = caffeineCache.getNativeCache();
+                    CacheStats stats = nativeCache.stats();
                     
-                    if ("hit".equals(result)) {
-                        totalHits[0] += (long) counter.count();
-                    } else if ("miss".equals(result)) {
-                        totalMisses[0] += (long) counter.count();
-                    }
+                    Map<String, Object> cacheInfo = new HashMap<>();
+                    cacheInfo.put("name", cacheName);
+                    cacheInfo.put("hits", stats.hitCount());
+                    cacheInfo.put("misses", stats.missCount());
+                    cacheInfo.put("total", stats.requestCount());
+                    cacheInfo.put("hitRate", stats.hitRate() * 100.0);
+                    cacheInfo.put("size", nativeCache.estimatedSize());
+                    cacheInfo.put("evictions", stats.evictionCount());
+                    cacheInfo.put("loadSuccess", stats.loadSuccessCount());
+                    cacheInfo.put("loadFailure", stats.loadFailureCount());
+                    cacheInfo.put("averageLoadTime", stats.averageLoadPenalty() / 1_000_000.0); // Convert to ms
+                    
+                    cacheList.add(cacheInfo);
+                    
+                    totalHits += stats.hitCount();
+                    totalMisses += stats.missCount();
                 }
-            });
+            } catch (Exception e) {
+                // Cache pode não existir, ignorar
+            }
+        }
         
-        long total = totalHits[0] + totalMisses[0];
-        double hitRate = total > 0 ? (totalHits[0] * 100.0 / total) : 0.0;
+        long grandTotal = totalHits + totalMisses;
+        double grandHitRate = grandTotal > 0 ? (totalHits * 100.0 / grandTotal) : 0.0;
         
-        cacheStats.put("hits", totalHits[0]);
-        cacheStats.put("misses", totalMisses[0]);
-        cacheStats.put("total", total);
-        cacheStats.put("hitRate", hitRate);
+        Map<String, Object> summary = new HashMap<>();
+        summary.put("totalHits", totalHits);
+        summary.put("totalMisses", totalMisses);
+        summary.put("total", grandTotal);
+        summary.put("hitRate", grandHitRate);
         
-        return cacheStats;
+        result.put("summary", summary);
+        result.put("caches", cacheList);
+        
+        return result;
+    }
+    
+    private Map<String, Object> getCacheMetrics() {
+        Map<String, Object> result = new HashMap<>();
+        
+        long totalHits = 0;
+        long totalMisses = 0;
+        
+        // Lista de caches a serem monitorados
+        String[] cacheNames = {
+            "tableSchemas", 
+            "partitionColumns", 
+            "minioHealthCheck", 
+            "databaseHealthCheck", 
+            "jvmHealthCheck", 
+            "minioClusterHealthCheck"
+        };
+        
+        // Coletar estatísticas de cada cache Caffeine
+        for (String cacheName : cacheNames) {
+            try {
+                org.springframework.cache.Cache cache = cacheManager.getCache(cacheName);
+                if (cache instanceof CaffeineCache) {
+                    CaffeineCache caffeineCache = (CaffeineCache) cache;
+                    com.github.benmanes.caffeine.cache.Cache<Object, Object> nativeCache = caffeineCache.getNativeCache();
+                    CacheStats stats = nativeCache.stats();
+                    
+                    totalHits += stats.hitCount();
+                    totalMisses += stats.missCount();
+                }
+            } catch (Exception e) {
+                // Cache pode não existir, ignorar
+            }
+        }
+        
+        long total = totalHits + totalMisses;
+        double hitRate = total > 0 ? (totalHits * 100.0 / total) : 0.0;
+        
+        result.put("hits", totalHits);
+        result.put("misses", totalMisses);
+        result.put("total", total);
+        result.put("hitRate", hitRate);
+        
+        return result;
     }
     
     private Map<String, Long> getRequestsByStatus() {

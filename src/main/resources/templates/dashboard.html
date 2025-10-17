@@ -84,14 +84,18 @@
                             <canvas id="cacheEfficiencyChart"></canvas>
                         </div>
                         <div id="cacheStats" style="margin-top: 16px; text-align: center;">
-                            <div style="display: flex; justify-content: space-around; gap: 12px;">
-                                <div>
-                                    <div style="font-size: 11px; color: #6B7280; text-transform: uppercase; letter-spacing: 0.5px;">Hit Rate</div>
-                                    <div id="cacheHitRate" style="font-size: 24px; font-weight: 700; color: #10B981; margin-top: 4px;">--%</div>
+                            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
+                                <div style="padding: 8px; background: #F0FDF4; border-radius: 6px; border: 1px solid #BBF7D0;">
+                                    <div style="font-size: 10px; color: #15803D; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Hits</div>
+                                    <div id="cacheHits" style="font-size: 20px; font-weight: 700; color: #16A34A; margin-top: 2px;">--</div>
                                 </div>
-                                <div>
-                                    <div style="font-size: 11px; color: #6B7280; text-transform: uppercase; letter-spacing: 0.5px;">Total</div>
-                                    <div id="cacheTotal" style="font-size: 24px; font-weight: 700; color: #1F2937; margin-top: 4px;">--</div>
+                                <div style="padding: 8px; background: #FEF2F2; border-radius: 6px; border: 1px solid #FECACA;">
+                                    <div style="font-size: 10px; color: #991B1B; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Misses</div>
+                                    <div id="cacheMisses" style="font-size: 20px; font-weight: 700; color: #DC2626; margin-top: 2px;">--</div>
+                                </div>
+                                <div style="padding: 8px; background: #F9FAFB; border-radius: 6px; border: 1px solid #E5E7EB;">
+                                    <div style="font-size: 10px; color: #4B5563; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Total</div>
+                                    <div id="cacheTotal" style="font-size: 20px; font-weight: 700; color: #1F2937; margin-top: 2px;">--</div>
                                 </div>
                             </div>
                         </div>
@@ -272,71 +276,79 @@
                 let statusPieChart = null;
                 let cacheEfficiencyChart = null;
                 
-                // Initialize Cache Efficiency Chart
+                // Initialize Cache Efficiency Gauge Chart
                 function initCacheEfficiencyChart() {
                     const ctx = document.getElementById('cacheEfficiencyChart').getContext('2d');
                     cacheEfficiencyChart = new Chart(ctx, {
                         type: 'doughnut',
                         data: {
-                            labels: ['Cache Hits', 'Cache Misses'],
+                            labels: ['Hit Rate', 'Remaining'],
                             datasets: [{
-                                data: [1, 0],  // Valores iniciais para garantir visibilidade
+                                data: [0, 100],  // Initial: 0% hit rate
                                 backgroundColor: [
-                                    '#10B981', // Green for hits
-                                    '#EF4444'  // Red for misses
+                                    '#EF4444', // Red for low hit rate (will change dynamically)
+                                    '#E5E7EB'  // Gray for remaining
                                 ],
-                                borderWidth: 2,
-                                borderColor: '#ffffff'
+                                borderWidth: 0,
+                                circumference: 180,
+                                rotation: 270
                             }]
                         },
                         options: {
                             responsive: true,
                             maintainAspectRatio: false,
+                            cutout: '75%',
                             plugins: {
                                 legend: {
-                                    position: 'bottom',
-                                    labels: {
-                                        boxWidth: 12,
-                                        padding: 10,
-                                        font: {
-                                            size: 11
-                                        },
-                                        generateLabels: function(chart) {
-                                            const data = chart.data;
-                                            if (data.labels.length && data.datasets.length) {
-                                                return data.labels.map((label, i) => {
-                                                    const value = data.datasets[0].data[i];
-                                                    const total = data.datasets[0].data.reduce((a, b) => a + b, 0);
-                                                    const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0.0';
-                                                    return {
-                                                        text: label + ': ' + value.toLocaleString() + ' (' + percentage + '%)',
-                                                        fillStyle: data.datasets[0].backgroundColor[i],
-                                                        hidden: false,
-                                                        index: i
-                                                    };
-                                                });
-                                            }
-                                            return [];
-                                        }
-                                    }
+                                    display: false
                                 },
                                 tooltip: {
-                                    callbacks: {
-                                        label: function(context) {
-                                            let label = context.label || '';
-                                            if (label) {
-                                                label += ': ';
-                                            }
-                                            const value = context.parsed || 0;
-                                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                            const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0.0';
-                                            label += value.toLocaleString() + ' (' + percentage + '%)';
-                                            return label;
-                                        }
-                                    }
+                                    enabled: false
                                 }
                             }
-                        }
+                        },
+                        plugins: [{
+                            id: 'gaugeText',
+                            afterDraw: function(chart) {
+                                const ctx = chart.ctx;
+                                const centerX = chart.chartArea.left + (chart.chartArea.right - chart.chartArea.left) / 2;
+                                const centerY = chart.chartArea.top + (chart.chartArea.bottom - chart.chartArea.top) / 2;
+                                
+                                // Get hit rate from data
+                                const hitRate = chart.data.datasets[0].data[0];
+                                
+                                // Draw percentage in center
+                                ctx.save();
+                                ctx.font = 'bold 42px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+                                ctx.fillStyle = '#1F2937';
+                                ctx.textAlign = 'center';
+                                ctx.textBaseline = 'middle';
+                                ctx.fillText(hitRate.toFixed(1) + '%', centerX, centerY - 10);
+                                
+                                // Draw label
+                                ctx.font = '14px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+                                ctx.fillStyle = '#6B7280';
+                                ctx.fillText('Cache Hit', centerX, centerY + 25);
+                                
+                                // Draw scale markers (0%, 50%, 100%)
+                                ctx.font = 'bold 12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+                                ctx.fillStyle = '#9CA3AF';
+                                
+                                // 0% (left)
+                                ctx.textAlign = 'left';
+                                ctx.fillText('0%', chart.chartArea.left + 10, centerY + 55);
+                                
+                                // 50% (center)
+                                ctx.textAlign = 'center';
+                                ctx.fillText('50%', centerX, centerY + 70);
+                                
+                                // 100% (right)
+                                ctx.textAlign = 'right';
+                                ctx.fillText('100%', chart.chartArea.right - 10, centerY + 55);
+                                
+                                ctx.restore();
+                            }
+                        }]
                     });
                 }
                 
@@ -468,7 +480,7 @@
                         });
                 }
                 
-                // Update Cache Efficiency Chart
+                // Update Cache Efficiency Gauge Chart
                 function updateCacheChart(cache) {
                     console.log('Cache data received:', cache);
                     
@@ -479,10 +491,12 @@
                     
                     if (!cache) {
                         console.warn('No cache data available');
-                        // Show default data to indicate no cache activity yet
-                        cacheEfficiencyChart.data.datasets[0].data = [0, 1];
+                        // Show 0% for no data
+                        cacheEfficiencyChart.data.datasets[0].data = [0, 100];
+                        cacheEfficiencyChart.data.datasets[0].backgroundColor[0] = '#9CA3AF'; // Gray
                         cacheEfficiencyChart.update();
-                        document.getElementById('cacheHitRate').textContent = '0.0%';
+                        document.getElementById('cacheHits').textContent = '0';
+                        document.getElementById('cacheMisses').textContent = '0';
                         document.getElementById('cacheTotal').textContent = '0';
                         return;
                     }
@@ -494,32 +508,33 @@
                     
                     console.log('Cache stats - Hits:', hits, 'Misses:', misses, 'Total:', total, 'Hit Rate:', hitRate);
                     
-                    // If no data yet, show a placeholder
+                    // Update gauge with hit rate (0-100%)
+                    const remaining = 100 - hitRate;
+                    cacheEfficiencyChart.data.datasets[0].data = [hitRate, remaining];
+                    
+                    // Change gauge color based on hit rate
+                    let gaugeColor;
                     if (total === 0) {
-                        cacheEfficiencyChart.data.datasets[0].data = [0, 1];
-                        cacheEfficiencyChart.data.labels = ['No Cache Data', 'Waiting for activity'];
+                        gaugeColor = '#9CA3AF'; // Gray for no data
+                    } else if (hitRate >= 80) {
+                        gaugeColor = '#10B981'; // Green for excellent
+                    } else if (hitRate >= 60) {
+                        gaugeColor = '#22C55E'; // Light green for good
+                    } else if (hitRate >= 40) {
+                        gaugeColor = '#F59E0B'; // Yellow for fair
+                    } else if (hitRate >= 20) {
+                        gaugeColor = '#FB923C'; // Orange for poor
                     } else {
-                        cacheEfficiencyChart.data.datasets[0].data = [hits, misses];
-                        cacheEfficiencyChart.data.labels = ['Cache Hits', 'Cache Misses'];
+                        gaugeColor = '#EF4444'; // Red for critical
                     }
                     
+                    cacheEfficiencyChart.data.datasets[0].backgroundColor[0] = gaugeColor;
                     cacheEfficiencyChart.update();
                     
-                    // Update stats
-                    document.getElementById('cacheHitRate').textContent = hitRate.toFixed(1) + '%';
+                    // Update stats below gauge
+                    document.getElementById('cacheHits').textContent = hits.toLocaleString();
+                    document.getElementById('cacheMisses').textContent = misses.toLocaleString();
                     document.getElementById('cacheTotal').textContent = total.toLocaleString();
-                    
-                    // Update hit rate color based on performance
-                    const hitRateElement = document.getElementById('cacheHitRate');
-                    if (total === 0) {
-                        hitRateElement.style.color = '#6B7280'; // Gray for no data
-                    } else if (hitRate >= 80) {
-                        hitRateElement.style.color = '#10B981'; // Green
-                    } else if (hitRate >= 50) {
-                        hitRateElement.style.color = '#F59E0B'; // Yellow
-                    } else {
-                        hitRateElement.style.color = '#EF4444'; // Red
-                    }
                 }
                 
                 // Update Timeline Chart
