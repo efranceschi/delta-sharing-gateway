@@ -1146,20 +1146,24 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog='''
 Examples:
-  # Run all tests
+  # Run all tests (uses config.share by default)
+  %(prog)s
   %(prog)s config.share
   
   # Run a specific test
-  %(prog)s config.share -t 1
+  %(prog)s -t 1
   %(prog)s config.share -t 8.5
   
   # List available tests
+  %(prog)s --list-tests
   %(prog)s config.share --list-tests
         '''
     )
     parser.add_argument(
         'config_file',
-        help='Path to Delta Sharing configuration file (.share)'
+        nargs='?',
+        default='config.share',
+        help='Path to Delta Sharing configuration file (.share) - Default: config.share'
     )
     parser.add_argument(
         '-t', '--test',
