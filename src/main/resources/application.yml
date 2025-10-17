@@ -60,7 +60,7 @@ delta:
       # When disabled, server will ignore deletionvectors requests and always return standard format
       # Default: false (disabled for broader compatibility)
       deletion-vectors:
-        enabled: ${DELTA_SHARING_DELETION_VECTORS_ENABLED:false}
+        enabled: ${DELTA_SHARING_DELETION_VECTORS_ENABLED:true}
     
     # Cache Configuration for Schema and Metadata
     cache:

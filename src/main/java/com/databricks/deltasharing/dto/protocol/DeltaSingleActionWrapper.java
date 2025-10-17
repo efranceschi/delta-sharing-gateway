@@ -45,12 +45,36 @@ public class DeltaSingleActionWrapper {
     private Long size;
     
     /**
-     * Expiration timestamp for the URL
+     * A unique string for the deletion vector file in a table.
+     * The same deletion vector file is guaranteed to have the same id across multiple requests.
+     * A client may cache the file content and use this id as a key to decide whether to use the cached file content.
+     * Optional: Only present when deletion vectors are enabled and the file has deletion vectors.
+     */
+    private String deletionVectorFileId;
+
+    /**
+     * The table version of the file.
+     * Returned when querying a table data with a version or timestamp parameter.
+     * Optional: Only present when querying with version/timestamp.
+     */
+    private Long version;
+
+    /**
+     * The unix timestamp corresponding to the table version of the file, in milliseconds.
+     * Returned when querying a table data with a version or timestamp parameter.
+     * Optional: Only present when querying with version/timestamp.
+     */
+    private Long timestamp;
+
+    /**
+     * The unix timestamp corresponding to the expiration of the url, in milliseconds.
+     * Returned when the server supports the feature.
+     * This indicates when the pre-signed URL will expire and needs to be refreshed.
      */
     private Long expirationTimestamp;
     
     /**
-     * The delta single action containing the "add" action
+     * Need to be parsed by a delta library as a delta single action, the path field is replaced by pr-signed url.
      */
     private DeltaSingleAction deltaSingleAction;
 }
