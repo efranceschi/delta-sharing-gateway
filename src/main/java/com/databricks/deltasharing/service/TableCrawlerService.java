@@ -248,16 +248,23 @@ public class TableCrawlerService {
             }
             
             String endpoint = storageConfig.getMinio().getEndpoint();
-            String bucket = storageConfig.getMinio().getBucket();
             String accessKey = storageConfig.getMinio().getAccessKey();
             
+            // Use share name as bucket name
+            String bucket = share.getName();
+            
             log.debug("│  Endpoint: {}", endpoint);
-            log.debug("│  Bucket: {}", bucket);
+            log.debug("│  Bucket (from share name): {}", bucket);
             log.debug("│  Access Key: {}", accessKey != null ? accessKey.substring(0, Math.min(4, accessKey.length())) + "***" : "null");
             
-            if (endpoint == null || bucket == null || accessKey == null) {
+            if (endpoint == null || accessKey == null) {
                 log.error("│  ❌ MinIO configuration is incomplete!");
-                log.error("│     endpoint={}, bucket={}, accessKey={}", endpoint, bucket, accessKey);
+                log.error("│     endpoint={}, accessKey={}", endpoint, accessKey);
+                return result;
+            }
+            
+            if (bucket == null || bucket.trim().isEmpty()) {
+                log.error("│  ❌ Share name is empty - cannot determine bucket name!");
                 return result;
             }
             
@@ -706,11 +713,13 @@ public class TableCrawlerService {
     
     /**
      * Extract table info from S3 path using pattern
+     * Note: bucket parameter is the share name (bucket = share in S3/MinIO)
      */
     private TableInfo extractTableInfo(String fullPath, DiscoveryPattern pattern, String bucket, String shareName) {
         TableInfo info = new TableInfo();
         
-        // Remove protocol prefix
+        // Remove protocol prefix (s3://bucket/)
+        // Since bucket = share name, this removes s3://share-name/
         String path = fullPath.replaceFirst("^s3://[^/]+/", "");
         
         // Split path into components
@@ -718,17 +727,19 @@ public class TableCrawlerService {
         
         // Map pattern to path parts based on discovery pattern
         if (pattern.hasShare && pathParts.length >= 3) {
-            // Pattern: {bucket}/{share}/{schema}/{table}
+            // Pattern: s3://{share}/{extra-level}/{schema}/{table}
+            // Not commonly used since share = bucket
             info.shareName = pathParts[0];
             info.schemaName = pathParts[1];
             info.tableName = pathParts[2];
         } else if (pattern.hasSchema && pathParts.length >= 2) {
-            // Pattern: {bucket}/{schema}/{table}
+            // Pattern: s3://{share}/{schema}/{table}
+            // Most common: share name is bucket, then schema/table inside
             info.shareName = shareName;
             info.schemaName = pathParts[0];
             info.tableName = pathParts[1];
         } else if (pathParts.length >= 1) {
-            // Pattern: {bucket}/{table} - use default schema
+            // Pattern: s3://{share}/{table} - use default schema
             info.shareName = shareName;
             info.schemaName = "default";
             info.tableName = pathParts[0];

@@ -78,16 +78,17 @@ delta:
       # Discovery pattern for tables in storage
       # Default: s3://{share}/{schema}/{table}
       # 
+      # Note: The {share} placeholder is used as the S3/MinIO bucket name
+      # 
       # Supported placeholders:
-      # - {bucket}: Storage bucket/container name
-      # - {share}: Share name
+      # - {share}: Share name (also used as bucket/container name in S3/MinIO)
       # - {schema}: Schema name
       # - {table}: Table name
       # 
       # Examples:
-      # - s3://{share}/{schema}/{table}
-      # - s3://{bucket}/{share}/{schema}/{table}
-      # - /data/{share}/{schema}/{table}
+      # - s3://{share}/{schema}/{table}     (share name = bucket name)
+      # - /data/{share}/{schema}/{table}    (for filesystem storage)
+      # - http://host/{share}/{schema}/{table}  (for HTTP storage)
       discovery-pattern: ${DELTA_SHARING_CRAWLER_PATTERN:s3://{share}/{schema}/{table}}
       
       # Automatically create missing schemas when discovering tables
@@ -271,6 +272,8 @@ delta:
         # Regular user credentials for data access (read-only recommended)
         access-key: ${DELTA_SHARING_STORAGE_MINIO_ACCESS_KEY:}
         secret-key: ${DELTA_SHARING_STORAGE_MINIO_SECRET_KEY:}
+        # Note: The crawler uses the share name as the bucket name
+        # This bucket configuration is kept for backward compatibility only
         bucket: ${DELTA_SHARING_STORAGE_MINIO_BUCKET:delta-sharing}
         url-expiration-minutes: ${DELTA_SHARING_STORAGE_MINIO_URL_EXPIRATION_MINUTES:60}
         # Use HTTPS for MinIO in production

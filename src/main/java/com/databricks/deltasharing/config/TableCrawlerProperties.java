@@ -34,16 +34,17 @@ public class TableCrawlerProperties {
      * Discovery pattern for tables in storage
      * Default: s3://{share}/{schema}/{table}
      * 
+     * Note: The {share} placeholder is used as the S3/MinIO bucket name
+     * 
      * Supported placeholders:
-     * - {bucket}: Storage bucket/container name
-     * - {share}: Share name
+     * - {share}: Share name (also used as bucket/container name in S3/MinIO)
      * - {schema}: Schema name
      * - {table}: Table name
      * 
      * Examples:
-     * - s3://{share}/{schema}/{table}
-     * - s3://{bucket}/{share}/{schema}/{table}
-     * - /data/{share}/{schema}/{table}
+     * - s3://{share}/{schema}/{table}     (share name = bucket name)
+     * - /data/{share}/{schema}/{table}    (for filesystem storage)
+     * - http://host/{share}/{schema}/{table}  (for HTTP storage)
      */
     private String discoveryPattern = "s3://{share}/{schema}/{table}";
     
