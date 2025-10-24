@@ -1,8 +1,10 @@
 package com.databricks.deltasharing.config;
 
+import com.databricks.deltasharing.model.CrawlerExecution;
 import com.databricks.deltasharing.model.DeltaSchema;
 import com.databricks.deltasharing.model.DeltaShare;
 import com.databricks.deltasharing.model.DeltaTable;
+import com.databricks.deltasharing.repository.CrawlerExecutionRepository;
 import com.databricks.deltasharing.repository.DeltaSchemaRepository;
 import com.databricks.deltasharing.repository.DeltaShareRepository;
 import com.databricks.deltasharing.repository.DeltaTableRepository;
@@ -44,6 +46,7 @@ public class DataInitializer {
     private final DeltaShareRepository shareRepository;
     private final DeltaSchemaRepository schemaRepository;
     private final DeltaTableRepository tableRepository;
+    private final CrawlerExecutionRepository crawlerExecutionRepository;
     
     private static final int TOTAL_SHARES = 5;
     private static final int MIN_SCHEMAS_PER_SHARE = 1;
@@ -100,8 +103,83 @@ public class DataInitializer {
             log.info("✅ Created {} tables", tableRepository.count());
             log.info("⏱️  Initialization completed in {} ms", duration);
             
+            // Generate crawler sample data
+            generateCrawlerSampleData();
+            
             logDataSummary();
         };
+    }
+    
+    /**
+     * Generate sample crawler executions and mark some tables as auto-discovered
+     */
+    private void generateCrawlerSampleData() {
+        log.info("Generating crawler sample data...");
+        
+        // Create some sample crawler executions
+        LocalDateTime now = LocalDateTime.now();
+        
+        // Execution 1: Recent successful execution
+        CrawlerExecution exec1 = CrawlerExecution.builder()
+                .startedAt(now.minusMinutes(10))
+                .finishedAt(now.minusMinutes(9))
+                .durationMs(45000L)
+                .status(CrawlerExecution.ExecutionStatus.SUCCESS)
+                .discoveredTables(5)
+                .createdSchemas(1)
+                .createdTables(5)
+                .storageType("fake")
+                .discoveryPattern("s3://{bucket}/{schema}/{table}")
+                .dryRun(false)
+                .build();
+        crawlerExecutionRepository.save(exec1);
+        
+        // Execution 2: Older successful execution
+        CrawlerExecution exec2 = CrawlerExecution.builder()
+                .startedAt(now.minusHours(1))
+                .finishedAt(now.minusHours(1).plusSeconds(30))
+                .durationMs(30000L)
+                .status(CrawlerExecution.ExecutionStatus.SUCCESS)
+                .discoveredTables(3)
+                .createdSchemas(0)
+                .createdTables(3)
+                .storageType("fake")
+                .discoveryPattern("s3://{bucket}/{schema}/{table}")
+                .dryRun(false)
+                .build();
+        crawlerExecutionRepository.save(exec2);
+        
+        // Execution 3: Failed execution
+        CrawlerExecution exec3 = CrawlerExecution.builder()
+                .startedAt(now.minusHours(2))
+                .finishedAt(now.minusHours(2).plusSeconds(5))
+                .durationMs(5000L)
+                .status(CrawlerExecution.ExecutionStatus.FAILED)
+                .discoveredTables(0)
+                .createdSchemas(0)
+                .createdTables(0)
+                .storageType("fake")
+                .discoveryPattern("s3://{bucket}/{schema}/{table}")
+                .dryRun(false)
+                .errorMessage("Connection timeout to storage")
+                .build();
+        crawlerExecutionRepository.save(exec3);
+        
+        log.info("✅ Created {} crawler executions", 3);
+        
+        // Mark some random tables as auto-discovered
+        List<DeltaTable> allTables = tableRepository.findAll();
+        int tablesMarkedAsAutoDiscovered = 0;
+        
+        for (int i = 0; i < Math.min(8, allTables.size()); i++) {
+            DeltaTable table = allTables.get(i);
+            table.setDiscoveredAt(now.minusMinutes(10 + i));
+            table.setDiscoveredBy("crawler");
+            tableRepository.save(table);
+            tablesMarkedAsAutoDiscovered++;
+        }
+        
+        log.info("✅ Marked {} tables as auto-discovered", tablesMarkedAsAutoDiscovered);
     }
     
     /**

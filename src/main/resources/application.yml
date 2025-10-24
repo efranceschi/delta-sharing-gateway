@@ -173,7 +173,7 @@ delta:
     crawler:
       enabled: true
       interval-minutes: 5
-      dry-run: true  # Safe mode for development
+      dry-run: false  # Disabled to actually create tables
 
 # Logging - Development
 logging:
