@@ -254,10 +254,10 @@ delta:
     # Enabled by default, can be disabled via environment variable: DELTA_SHARING_CRAWLER_ENABLED=false
     crawler:
       enabled: ${DELTA_SHARING_CRAWLER_ENABLED:true}
-      interval-minutes: ${DELTA_SHARING_CRAWLER_INTERVAL:15}  # More conservative in prod
-      initial-delay-minutes: ${DELTA_SHARING_CRAWLER_INITIAL_DELAY:5}
+      auto-create: ${DELTA_SHARING_CRAWLER_AUTO_CREATE:true}           # Auto-create resources (shares, schemas, tables)
+      interval-minutes: ${DELTA_SHARING_CRAWLER_INTERVAL:1}            # More conservative in prod
+      initial-delay-minutes: ${DELTA_SHARING_CRAWLER_INITIAL_DELAY:1}  # More conservative in prod
       discovery-pattern: ${DELTA_SHARING_CRAWLER_PATTERN:s3://{share}/{schema}/{table}}
-      auto-create: ${DELTA_SHARING_CRAWLER_AUTO_CREATE:true}  # Auto-create resources (shares, schemas, tables)
       dry-run: ${DELTA_SHARING_CRAWLER_DRY_RUN:false}
     
     storage:
