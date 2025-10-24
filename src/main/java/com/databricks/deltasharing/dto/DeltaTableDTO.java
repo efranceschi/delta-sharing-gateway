@@ -40,4 +40,8 @@ public class DeltaTableDTO {
     private LocalDateTime createdAt;
     
     private LocalDateTime updatedAt;
+    
+    private LocalDateTime discoveredAt;
+    
+    private String discoveredBy;
 }

@@ -104,6 +104,8 @@ public class DeltaTableManagementService {
                 .format(table.getFormat())
                 .createdAt(table.getCreatedAt())
                 .updatedAt(table.getUpdatedAt())
+                .discoveredAt(table.getDiscoveredAt())
+                .discoveredBy(table.getDiscoveredBy())
                 .build();
     }
 }
