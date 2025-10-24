@@ -1,0 +1,173 @@
+# Delta Sharing OnPrem - Cursor AI Rules
+
+## 🚀 Desenvolvimento com Hot Reload
+
+Este projeto usa **Spring Boot DevTools** com hot reload automático.
+
+### ❌ NÃO FAÇA:
+- NÃO compile o projeto após cada alteração
+- NÃO use `mvn compile` ou `bash compile.sh` durante desenvolvimento
+- NÃO reinicie a aplicação manualmente após mudanças
+- NÃO sugira recompilar para ver alterações
+
+### ✅ FAÇA:
+- Altere os arquivos normalmente
+- Salve as alterações
+- Aguarde 2-5 segundos para reload automático
+- Apenas atualize o browser (F5) para ver mudanças de UI
+
+### 🔄 Quando Compilar:
+Apenas sugira compilação quando:
+1. Adicionar dependências no pom.xml
+2. Primeira build do projeto
+3. Preparar para produção
+4. Após pull/merge que alterou dependências
+
+## 📁 Estrutura do Projeto
+
+### Backend (Java)
+- `src/main/java/` - Código Java
+  - `controller/` - REST API e Web Controllers
+  - `service/` - Lógica de negócio
+  - `repository/` - Acesso a dados (JPA)
+  - `model/` - Entidades JPA
+  - `dto/` - Data Transfer Objects
+  - `config/` - Configurações Spring
+
+### Frontend (Thymeleaf + CSS)
+- `src/main/resources/templates/` - Templates HTML (Thymeleaf)
+- `src/main/resources/static/` - Arquivos estáticos
+  - `css/` - Estilos CSS
+  - `js/` - JavaScript
+  - `images/` - Imagens
+
+### Configuração
+- `src/main/resources/application.yml` - Configuração principal
+- `pom.xml` - Dependências Maven
+
+## 🎨 Padrões de Código
+
+### Naming Conventions
+- Classes: PascalCase (ex: `DeltaShareController`)
+- Métodos: camelCase (ex: `createStorage`)
+- Constantes: UPPER_SNAKE_CASE (ex: `DEFAULT_PAGE_SIZE`)
+- Packages: lowercase (ex: `com.databricks.deltasharing`)
+
+### Anotações Spring
+- `@Service` - Serviços de negócio
+- `@Repository` - Acesso a dados
+- `@Controller` - Controllers web (Thymeleaf)
+- `@RestController` - REST API endpoints
+- `@Entity` - Entidades JPA
+
+### Lombok
+Use Lombok para reduzir boilerplate:
+- `@Data` - Para DTOs
+- `@Getter/@Setter` - Para entidades
+- `@Builder` - Para pattern Builder
+- `@RequiredArgsConstructor` - Para injeção de dependências
+- `@Slf4j` - Para logging
+
+## 🗄️ Storage Management
+
+### Tipos de Storage Suportados
+1. **MinIO** - S3-compatible object storage
+2. **HTTP** - Arquivos servidos via HTTP
+3. **Filesystem** - Acesso direto ao filesystem local
+4. **Fake** - Storage sintético para testes
+
+### Dynamic Storage Services
+- NÃO são Spring beans (`@Component`)
+- Criados dinamicamente pelo `StorageServiceFactory`
+- Configurados em runtime via `configure(Storage)` método
+
+### Storage Resolver
+- Resolve qual storage usar para cada share
+- Storage é OBRIGATÓRIO para cada share
+- Sem fallback para configuração estática
+
+## 🎯 Convenções de UI (Thymeleaf)
+
+### Classes CSS (Databricks Style)
+- `db-btn` - Botão base
+- `db-btn-primary` - Botão primário (azul)
+- `db-btn-secondary` - Botão secundário (cinza)
+- `db-form-control` - Input/textarea
+- `db-table` - Tabela
+- `db-badge-status` - Badge de status
+- `db-alert` - Alertas
+
+### Estrutura de Templates
+```html
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+    <th:block th:replace="~{layout :: layout(~{::title}, ~{::content})}">
+        <title>Page Title</title>
+        <th:block th:fragment="content">
+            <!-- Conteúdo aqui -->
+        </th:block>
+    </th:block>
+</body>
+</html>
+```
+
+## 🔐 Security
+
+### Autenticação
+- **Web UI**: Form-based auth (usuário/senha)
+- **Delta Sharing API**: Bearer token auth
+
+### Perfis
+- `dev` - Desenvolvimento (H2 in-memory, dados de exemplo)
+- `prod` - Produção (PostgreSQL, sem dados de exemplo)
+
+## 📊 Logging
+
+Use `@Slf4j` e níveis apropriados:
+- `log.trace()` - Detalhes muito específicos
+- `log.debug()` - Informações de debug
+- `log.info()` - Informações gerais
+- `log.warn()` - Avisos
+- `log.error()` - Erros
+
+## 🧪 Desenvolvimento Local
+
+### Iniciar Aplicação
+```bash
+bash run.sh
+```
+
+### Acessar
+- **Web UI**: http://localhost:8080
+- **Login**: admin / DeltaSharing@Databricks
+- **Delta Sharing API**: http://localhost:8080/delta-sharing
+
+### Portas
+- `8080` - Aplicação web
+- `9000` - MinIO (se rodando localmente)
+- `5432` - PostgreSQL (modo prod)
+
+## 🎁 Features Principais
+
+1. **Storage Management** - Gerenciamento dinâmico de storages
+2. **Share Management** - Gerenciamento de Delta Shares
+3. **Schema Management** - Organização em schemas
+4. **Table Management** - Tabelas Delta/Parquet
+5. **User Management** - Controle de acesso
+
+## 🔄 Workflow de Desenvolvimento
+
+1. ✅ Inicie a aplicação: `bash run.sh`
+2. ✅ Altere arquivos conforme necessário
+3. ✅ Salve as alterações
+4. ✅ Aguarde reload automático (2-5s)
+5. ✅ Atualize o browser (F5)
+6. ✅ Continue desenvolvendo
+
+**❌ NÃO recompile ou reinicie a menos que seja absolutamente necessário!**
+
+---
+
+**Lembre-se: O Spring Boot DevTools é seu amigo. Confie nele! 🚀**
+
