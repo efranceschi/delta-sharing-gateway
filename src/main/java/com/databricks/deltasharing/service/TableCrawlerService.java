@@ -17,6 +17,7 @@ import io.minio.messages.Item;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -50,6 +51,15 @@ public class TableCrawlerService {
     private final DeltaSchemaRepository schemaRepository;
     private final DeltaTableRepository tableRepository;
     private final CrawlerExecutionRepository executionRepository;
+    
+    /**
+     * Trigger manual crawler execution asynchronously
+     */
+    @Async
+    public void triggerManualCrawl() {
+        log.info("🚀 Manual crawler trigger - Starting asynchronous execution");
+        crawlTables();
+    }
     
     /**
      * Scheduled task that runs the table crawler
@@ -92,11 +102,25 @@ public class TableCrawlerService {
         
         try {
             // Get all active shares
-            List<DeltaShare> activeShares = shareRepository.findAll().stream()
+            log.debug("🔍 Fetching all shares from repository...");
+            List<DeltaShare> allShares = shareRepository.findAll();
+            log.debug("📊 Total shares in database: {}", allShares.size());
+            
+            List<DeltaShare> activeShares = allShares.stream()
                     .filter(DeltaShare::getActive)
                     .toList();
             
-            log.info("Found {} active share(s) to scan", activeShares.size());
+            log.info("✅ Found {} active share(s) to scan (out of {} total)", activeShares.size(), allShares.size());
+            
+            if (activeShares.isEmpty()) {
+                log.warn("⚠️ No active shares found. Crawler has nothing to scan.");
+                log.warn("   Create shares in the web interface at /admin/shares");
+            }
+            
+            // Log details of each share
+            for (DeltaShare share : activeShares) {
+                log.debug("   → Share: {} (ID: {}, Active: {})", share.getName(), share.getId(), share.getActive());
+            }
             
             for (DeltaShare share : activeShares) {
                 log.debug("Processing share: {}", share.getName());
@@ -151,35 +175,56 @@ public class TableCrawlerService {
         CrawlerResult result = new CrawlerResult();
         
         try {
+            log.debug("════════════════════════════════════════════════════════════");
+            log.debug("🔍 Scanning storage for share: {}", share.getName());
+            log.debug("════════════════════════════════════════════════════════════");
+            
             // Parse discovery pattern
             DiscoveryPattern pattern = parseDiscoveryPattern(crawlerProperties.getDiscoveryPattern());
+            log.debug("📋 Discovery pattern: {}", pattern.rawPattern);
+            log.debug("   → Has share placeholder: {}", pattern.hasShare);
+            log.debug("   → Has schema placeholder: {}", pattern.hasSchema);
+            log.debug("   → Has table placeholder: {}", pattern.hasTable);
             
             // Based on storage type, scan for tables
             String storageType = storageConfig.getType().toUpperCase();
+            log.debug("🗄️  Storage type: {}", storageType);
             
             switch (storageType) {
                 case "MINIO":
+                    log.debug("   → Scanning MinIO/S3 storage...");
                     result = scanMinIOStorage(share, pattern);
                     break;
                     
                 case "HTTP":
+                    log.debug("   → Scanning HTTP storage...");
                     result = scanHttpStorage(share, pattern);
                     break;
                     
                 case "FILESYSTEM":
+                    log.debug("   → Scanning Filesystem storage...");
                     result = scanFilesystemStorage(share, pattern);
                     break;
                     
                 case "FAKE":
-                    log.debug("Skipping FAKE storage type (no real data to discover)");
+                    log.debug("⏭️  Skipping FAKE storage type (no real data to discover)");
+                    log.debug("   FAKE storage is for synthetic data generation only.");
                     break;
                     
                 default:
-                    log.warn("Unsupported storage type for crawler: {}", storageType);
+                    log.warn("❌ Unsupported storage type for crawler: {}", storageType);
+                    log.warn("   Supported types: MINIO, HTTP, FILESYSTEM, FAKE");
             }
             
+            log.debug("📊 Scan results for share '{}':", share.getName());
+            log.debug("   → Discovered: {} tables", result.discoveredTables);
+            log.debug("   → Created: {} tables", result.createdTables);
+            log.debug("   → Created: {} schemas", result.createdSchemas);
+            
         } catch (Exception e) {
-            log.error("Error scanning storage for share: {}", share.getName(), e);
+            log.error("❌ Error scanning storage for share: {}", share.getName(), e);
+            log.error("   Exception type: {}", e.getClass().getName());
+            log.error("   Message: {}", e.getMessage());
         }
         
         return result;
@@ -192,98 +237,168 @@ public class TableCrawlerService {
         CrawlerResult result = new CrawlerResult();
         
         try {
-            // Build MinIO client from configuration
-            MinioClient minioClient = MinioClient.builder()
-                    .endpoint(storageConfig.getMinio().getEndpoint())
-                    .credentials(storageConfig.getMinio().getAccessKey(), storageConfig.getMinio().getSecretKey())
-                    .build();
+            log.debug("┌─ MinIO Storage Scan");
+            log.debug("│  Share: {}", share.getName());
             
+            // Check MinIO configuration
+            if (storageConfig.getMinio() == null) {
+                log.error("│  ❌ MinIO configuration is null!");
+                log.error("│     Configure MinIO in application.yml under delta.sharing.storage.minio");
+                return result;
+            }
+            
+            String endpoint = storageConfig.getMinio().getEndpoint();
             String bucket = storageConfig.getMinio().getBucket();
-            log.debug("Scanning MinIO bucket: {} on endpoint: {}", bucket, storageConfig.getMinio().getEndpoint());
+            String accessKey = storageConfig.getMinio().getAccessKey();
+            
+            log.debug("│  Endpoint: {}", endpoint);
+            log.debug("│  Bucket: {}", bucket);
+            log.debug("│  Access Key: {}", accessKey != null ? accessKey.substring(0, Math.min(4, accessKey.length())) + "***" : "null");
+            
+            if (endpoint == null || bucket == null || accessKey == null) {
+                log.error("│  ❌ MinIO configuration is incomplete!");
+                log.error("│     endpoint={}, bucket={}, accessKey={}", endpoint, bucket, accessKey);
+                return result;
+            }
+            
+            // Build MinIO client from configuration
+            log.debug("│  Building MinIO client...");
+            MinioClient minioClient = MinioClient.builder()
+                    .endpoint(endpoint)
+                    .credentials(accessKey, storageConfig.getMinio().getSecretKey())
+                    .build();
+            log.debug("│  ✅ MinIO client created successfully");
             
             // List all objects in bucket
+            log.debug("│  Listing objects in bucket '{}'...", bucket);
             Iterable<Result<Item>> results = minioClient.listObjects(
                     ListObjectsArgs.builder()
                             .bucket(bucket)
                             .recursive(true)
                             .build()
             );
+            log.debug("│  ✅ Object listing started");
             
             // Track discovered paths
             Set<String> discoveredTables = new HashSet<>();
+            int totalObjects = 0;
+            int deltaLogObjects = 0;
+            int parquetObjects = 0;
             
             for (Result<Item> itemResult : results) {
+                totalObjects++;
+                String objectPath = null;
                 try {
                     Item item = itemResult.get();
-                    String objectPath = item.objectName();
+                    objectPath = item.objectName();
+                    
+                    // Log every 100 objects to show progress
+                    if (totalObjects % 100 == 0) {
+                        log.debug("│  Progress: Scanned {} objects... (Delta logs: {}, Parquet: {})", 
+                                  totalObjects, deltaLogObjects, parquetObjects);
+                    }
                     
                     // Check if this is a Delta table (_delta_log directory)
                     if (objectPath.contains("_delta_log/")) {
+                        deltaLogObjects++;
+                        log.trace("│    → Found Delta log: {}", objectPath);
+                        
                         String tablePath = extractTablePathFromDeltaLog(objectPath);
                         if (tablePath != null && !discoveredTables.contains(tablePath)) {
                             discoveredTables.add(tablePath);
                             
                             // Build full S3 path
                             String fullPath = String.format("s3://%s/%s", bucket, tablePath);
+                            log.debug("│  📦 Discovered Delta table path: {}", fullPath);
                             
                             // Extract schema and table from path using pattern
                             TableInfo tableInfo = extractTableInfo(fullPath, pattern, bucket, share.getName());
                             
                             if (tableInfo != null) {
                                 result.discoveredTables++;
-                                log.debug("Discovered Delta table: {} in schema: {}", tableInfo.tableName, tableInfo.schemaName);
+                                log.info("│  ✅ Discovered Delta table: {} in schema: {}", tableInfo.tableName, tableInfo.schemaName);
                                 
                                 // Create schema if needed
                                 DeltaSchema schema = getOrCreateSchema(tableInfo.schemaName, share);
                                 if (schema != null) {
                                     if (tableInfo.isNewSchema) {
                                         result.createdSchemas++;
+                                        log.info("│     ➕ Created new schema: {}", tableInfo.schemaName);
                                     }
                                     
                                     // Create table if not exists
                                     if (createTableIfNotExists(tableInfo.tableName, fullPath, "delta", schema)) {
                                         result.createdTables++;
+                                        log.info("│     ➕ Created new table: {}", tableInfo.tableName);
+                                    } else {
+                                        log.debug("│     ⏭️  Table already exists: {}", tableInfo.tableName);
                                     }
                                 }
+                            } else {
+                                log.debug("│     ⏭️  Could not extract table info from: {}", fullPath);
                             }
                         }
                     }
                     // Check for Parquet files
                     else if (objectPath.endsWith(".parquet") && !objectPath.contains("_delta_log/")) {
+                        parquetObjects++;
+                        log.trace("│    → Found Parquet file: {}", objectPath);
+                        
                         String tablePath = extractTablePathFromParquet(objectPath);
                         if (tablePath != null && !discoveredTables.contains(tablePath)) {
                             discoveredTables.add(tablePath);
                             
                             String fullPath = String.format("s3://%s/%s", bucket, tablePath);
+                            log.debug("│  📦 Discovered Parquet table path: {}", fullPath);
+                            
                             TableInfo tableInfo = extractTableInfo(fullPath, pattern, bucket, share.getName());
                             
                             if (tableInfo != null) {
                                 result.discoveredTables++;
-                                log.debug("Discovered Parquet table: {} in schema: {}", tableInfo.tableName, tableInfo.schemaName);
+                                log.info("│  ✅ Discovered Parquet table: {} in schema: {}", tableInfo.tableName, tableInfo.schemaName);
                                 
                                 DeltaSchema schema = getOrCreateSchema(tableInfo.schemaName, share);
                                 if (schema != null) {
                                     if (tableInfo.isNewSchema) {
                                         result.createdSchemas++;
+                                        log.info("│     ➕ Created new schema: {}", tableInfo.schemaName);
                                     }
                                     
                                     if (createTableIfNotExists(tableInfo.tableName, fullPath, "parquet", schema)) {
                                         result.createdTables++;
+                                        log.info("│     ➕ Created new table: {}", tableInfo.tableName);
+                                    } else {
+                                        log.debug("│     ⏭️  Table already exists: {}", tableInfo.tableName);
                                     }
                                 }
+                            } else {
+                                log.debug("│     ⏭️  Could not extract table info from: {}", fullPath);
                             }
                         }
                     }
                     
                 } catch (Exception e) {
-                    log.warn("Error processing object in MinIO: {}", e.getMessage());
+                    log.warn("│  ⚠️  Error processing object: {} - {}", objectPath, e.getMessage());
+                    log.debug("│     Exception details:", e);
                 }
             }
             
-            log.info("Completed MinIO scan: {} tables discovered", discoveredTables.size());
+            log.info("└─ Completed MinIO scan");
+            log.info("   Total objects scanned: {}", totalObjects);
+            log.info("   Delta log objects: {}", deltaLogObjects);
+            log.info("   Parquet files: {}", parquetObjects);
+            log.info("   Unique tables discovered: {}", discoveredTables.size());
+            
+            if (totalObjects == 0) {
+                log.warn("   ⚠️  No objects found in bucket '{}'!", bucket);
+                log.warn("      Is the bucket empty or are credentials correct?");
+            }
             
         } catch (Exception e) {
-            log.error("Error scanning MinIO storage for share: {}", share.getName(), e);
+            log.error("└─ ❌ Error scanning MinIO storage for share: {}", share.getName());
+            log.error("   Exception: {}", e.getClass().getName());
+            log.error("   Message: {}", e.getMessage());
+            log.debug("   Full stack trace:", e);
         }
         
         return result;

@@ -23,6 +23,11 @@
                 <div class="db-topbar-left">
                     <h1 class="db-topbar-title">Crawler History</h1>
                 </div>
+                <div class="db-topbar-right">
+                    <button onclick="triggerCrawler()" class="db-btn db-btn-primary" id="trigger-crawler-btn">
+                        <i class="fas fa-play"></i> Run Crawler Now
+                    </button>
+                </div>
             </header>
             
             <!-- Content -->
@@ -145,6 +150,42 @@
                     </div>
                 </section>
             </div>
+            
+            <script>
+            function triggerCrawler() {
+                const btn = document.getElementById('trigger-crawler-btn');
+                const originalHtml = btn.innerHTML;
+                
+                // Disable button and show loading
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Running...';
+                
+                fetch('/api/crawler/trigger', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('✅ Crawler started successfully\!\n\nCheck the logs for detailed progress.\nThe page will refresh in 3 seconds to show the new execution.');
+                        setTimeout(() => {
+                            location.reload();
+                        }, 3000);
+                    } else {
+                        alert('❌ Error: ' + data.message);
+                        btn.disabled = false;
+                        btn.innerHTML = originalHtml;
+                    }
+                })
+                .catch(error => {
+                    alert('❌ Error triggering crawler: ' + error.message);
+                    btn.disabled = false;
+                    btn.innerHTML = originalHtml;
+                });
+            }
+            </script>
         </th:block>
     </th:block>
 </body>
