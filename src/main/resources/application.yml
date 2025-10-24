@@ -91,8 +91,9 @@ delta:
       # - http://host/{share}/{schema}/{table}  (for HTTP storage)
       discovery-pattern: ${DELTA_SHARING_CRAWLER_PATTERN:s3://{share}/{schema}/{table}}
       
-      # Automatically create missing schemas when discovering tables
-      auto-create-schemas: ${DELTA_SHARING_CRAWLER_AUTO_CREATE_SCHEMAS:true}
+      # Automatically create missing resources (shares, schemas, tables) when discovering
+      # If false, only existing schemas will be used
+      auto-create: ${DELTA_SHARING_CRAWLER_AUTO_CREATE:true}
       
       # Dry-run mode: log discoveries without creating tables
       # Useful for testing the crawler before enabling it
@@ -256,7 +257,7 @@ delta:
       interval-minutes: ${DELTA_SHARING_CRAWLER_INTERVAL:15}  # More conservative in prod
       initial-delay-minutes: ${DELTA_SHARING_CRAWLER_INITIAL_DELAY:5}
       discovery-pattern: ${DELTA_SHARING_CRAWLER_PATTERN:s3://{share}/{schema}/{table}}
-      auto-create-schemas: ${DELTA_SHARING_CRAWLER_AUTO_CREATE_SCHEMAS:false}  # Require explicit schema creation in prod
+      auto-create: ${DELTA_SHARING_CRAWLER_AUTO_CREATE:true}  # Auto-create resources (shares, schemas, tables)
       dry-run: ${DELTA_SHARING_CRAWLER_DRY_RUN:false}
     
     storage:

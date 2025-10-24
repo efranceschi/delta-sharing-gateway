@@ -49,9 +49,10 @@ public class TableCrawlerProperties {
     private String discoveryPattern = "s3://{share}/{schema}/{table}";
     
     /**
-     * Automatically create missing schemas when discovering tables
+     * Automatically create missing resources (shares, schemas, tables) when discovering
+     * If false, only existing schemas will be used and tables won't be created in non-existing schemas
      */
-    private boolean autoCreateSchemas = true;
+    private boolean autoCreate = true;
     
     /**
      * Dry-run mode: log discoveries without creating tables

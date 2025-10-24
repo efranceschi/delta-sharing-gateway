@@ -147,10 +147,15 @@ public class TableCrawlerService {
         log.info("╔════════════════════════════════════════════════════════════════");
         log.info("║ Starting Automatic Table Crawler (Execution #{})", execution.getId());
         log.info("╠════════════════════════════════════════════════════════════════");
-        log.info("║ Pattern: {}", crawlerProperties.getDiscoveryPattern());
-        log.info("║ Dry-run: {}", crawlerProperties.isDryRun());
-        log.info("║ Auto-create schemas: {}", crawlerProperties.isAutoCreateSchemas());
-        log.info("║ Storage type: {}", storageConfig.getType());
+        log.info("║ Discovery pattern:     {}", crawlerProperties.getDiscoveryPattern());
+        log.info("║ Storage type:          {}", storageConfig.getType());
+        log.info("║ Dry-run mode:          {} {}", 
+                 crawlerProperties.isDryRun(),
+                 crawlerProperties.isDryRun() ? "(⚠️  changes will NOT be saved)" : "");
+        log.info("║ Auto-create:           {} {}", 
+                 crawlerProperties.isAutoCreate(),
+                 crawlerProperties.isAutoCreate() ? "(✅ shares, schemas, tables will be created)" : "(❌ only existing resources will be used)");
+        log.info("║ Interval:              {} minutes", crawlerProperties.getIntervalMinutes());
         log.info("╚════════════════════════════════════════════════════════════════");
         
         long startTime = System.currentTimeMillis();
@@ -403,6 +408,9 @@ public class TableCrawlerService {
                                     } else {
                                         log.debug("│     ⏭️  Table already exists: {}", tableInfo.tableName);
                                     }
+                                } else {
+                                    log.warn("│     ⚠️  Cannot create table '{}' - schema '{}' creation failed or disabled", 
+                                             tableInfo.tableName, tableInfo.schemaName);
                                 }
                             } else {
                                 log.debug("│     ⏭️  Could not extract table info from: {}", fullPath);
@@ -440,6 +448,9 @@ public class TableCrawlerService {
                                     } else {
                                         log.debug("│     ⏭️  Table already exists: {}", tableInfo.tableName);
                                     }
+                                } else {
+                                    log.warn("│     ⚠️  Cannot create table '{}' - schema '{}' creation failed or disabled", 
+                                             tableInfo.tableName, tableInfo.schemaName);
                                 }
                             } else {
                                 log.debug("│     ⏭️  Could not extract table info from: {}", fullPath);
@@ -658,11 +669,14 @@ public class TableCrawlerService {
             return null;
         }
         
-        if (!crawlerProperties.isAutoCreateSchemas()) {
-            log.warn("Schema {} does not exist and auto-create is disabled", schemaName);
+        if (!crawlerProperties.isAutoCreate()) {
+            log.warn("❌ Schema '{}' does not exist in share '{}' and auto-create is disabled", schemaName, share.getName());
+            log.warn("   To enable auto-creation, set delta.sharing.crawler.auto-create=true in application.yml");
+            log.warn("   Or set environment variable: DELTA_SHARING_CRAWLER_AUTO_CREATE=true");
             return null;
         }
         
+        log.info("📝 Creating new schema '{}' in share '{}'...", schemaName, share.getName());
         DeltaSchema newSchema = new DeltaSchema();
         newSchema.setName(schemaName);
         newSchema.setDescription("Auto-discovered by table crawler");
