@@ -61,6 +61,49 @@ delta:
         ttl-minutes: ${SCHEMA_CACHE_TTL_MINUTES:60}
         # Maximum number of schemas to cache
         max-size: ${SCHEMA_CACHE_MAX_SIZE:1000}
+    
+    # Automatic Table Crawler Configuration
+    crawler:
+      # Enable or disable the automatic table discovery crawler
+      enabled: ${DELTA_SHARING_CRAWLER_ENABLED:true}
+      
+      # Interval in minutes between each crawler execution
+      # Default: 5 minutes
+      interval-minutes: ${DELTA_SHARING_CRAWLER_INTERVAL:5}
+      
+      # Initial delay before first crawler execution (in minutes)
+      # Default: 1 minute
+      initial-delay-minutes: ${DELTA_SHARING_CRAWLER_INITIAL_DELAY:1}
+      
+      # Discovery pattern for tables in storage
+      # Default: s3://{bucket}/{schema}/{table}
+      # 
+      # Supported placeholders:
+      # - {bucket}: Storage bucket/container name
+      # - {share}: Share name
+      # - {schema}: Schema name
+      # - {table}: Table name
+      # 
+      # Examples:
+      # - s3://{bucket}/{schema}/{table}
+      # - s3://{bucket}/{share}/{schema}/{table}
+      # - /data/{share}/{schema}/{table}
+      discovery-pattern: ${DELTA_SHARING_CRAWLER_PATTERN:s3://{bucket}/{schema}/{table}}
+      
+      # Automatically create missing schemas when discovering tables
+      auto-create-schemas: ${DELTA_SHARING_CRAWLER_AUTO_CREATE_SCHEMAS:true}
+      
+      # Dry-run mode: log discoveries without creating tables
+      # Useful for testing the crawler before enabling it
+      dry-run: ${DELTA_SHARING_CRAWLER_DRY_RUN:false}
+      
+      # File formats to scan for (comma-separated)
+      # Default: delta,parquet
+      scan-formats: ${DELTA_SHARING_CRAWLER_SCAN_FORMATS:delta,parquet}
+      
+      # Maximum depth to scan in directory structure
+      # Default: 5
+      max-scan-depth: ${DELTA_SHARING_CRAWLER_MAX_DEPTH:5}
 
 ---
 # =============================================================================
@@ -125,6 +168,12 @@ delta:
         # Use HTTP in development
         url-protocol: http
         base-url: http://localhost:${SERVER_PORT:8080}
+    
+    # Crawler disabled by default in development
+    crawler:
+      enabled: false
+      interval-minutes: 5
+      dry-run: true  # Safe mode for development
 
 # Logging - Development
 logging:
@@ -198,6 +247,16 @@ delta:
     auth:
       enabled: true
       bearer-token: ${DELTA_SHARING_ADMIN_TOKEN:}
+    
+    # Crawler configuration for production
+    # Enable via environment variable: DELTA_SHARING_CRAWLER_ENABLED=true
+    crawler:
+      enabled: ${DELTA_SHARING_CRAWLER_ENABLED:false}
+      interval-minutes: ${DELTA_SHARING_CRAWLER_INTERVAL:15}  # More conservative in prod
+      initial-delay-minutes: ${DELTA_SHARING_CRAWLER_INITIAL_DELAY:5}
+      discovery-pattern: ${DELTA_SHARING_CRAWLER_PATTERN:s3://{bucket}/{schema}/{table}}
+      auto-create-schemas: ${DELTA_SHARING_CRAWLER_AUTO_CREATE_SCHEMAS:false}  # Require explicit schema creation in prod
+      dry-run: ${DELTA_SHARING_CRAWLER_DRY_RUN:false}
     
     storage:
       # Use MinIO storage in production (recommended for S3-compatible object storage)
