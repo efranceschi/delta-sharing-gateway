@@ -1,15 +1,20 @@
 package com.databricks.deltasharing.controller.web;
 
+import com.databricks.deltasharing.model.CrawlerExecution;
 import com.databricks.deltasharing.repository.DeltaTableRepository;
+import com.databricks.deltasharing.service.CrawlerStatusService;
 import com.databricks.deltasharing.service.DeltaShareManagementService;
 import com.databricks.deltasharing.service.DeltaSchemaManagementService;
 import com.databricks.deltasharing.service.DeltaTableManagementService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+
+import java.util.Optional;
 
 @Controller
 @RequiredArgsConstructor
@@ -20,6 +25,9 @@ public class DashboardController {
     private final DeltaSchemaManagementService schemaService;
     private final DeltaTableManagementService tableService;
     private final DeltaTableRepository tableRepository;
+    
+    @Autowired(required = false)
+    private CrawlerStatusService crawlerStatusService;
     
     @GetMapping("/")
     @Transactional(readOnly = true)
@@ -36,6 +44,20 @@ public class DashboardController {
         model.addAttribute("tables", tableRepository.findAll());
         model.addAttribute("appName", "Delta Sharing Gateway");
         model.addAttribute("version", "1.0.0");
+        
+        // Add crawler information if available
+        if (crawlerStatusService != null) {
+            Optional<CrawlerExecution> lastExecution = crawlerStatusService.getLastExecution();
+            model.addAttribute("crawlerLastExecution", lastExecution.orElse(null));
+            model.addAttribute("crawlerEnabled", lastExecution.isPresent());
+            model.addAttribute("autoDiscoveredTablesCount", crawlerStatusService.countAutoDiscoveredTables());
+            model.addAttribute("manualTablesCount", crawlerStatusService.countManualTables());
+        } else {
+            model.addAttribute("crawlerEnabled", false);
+            model.addAttribute("crawlerLastExecution", null);
+            model.addAttribute("autoDiscoveredTablesCount", 0L);
+            model.addAttribute("manualTablesCount", tablesCount);
+        }
         
         return "dashboard";
     }

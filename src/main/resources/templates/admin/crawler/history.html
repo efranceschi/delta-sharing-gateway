@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+</head>
+<body>
+    <th:block th:replace="~{layout :: layout(~{::title}, ~{::content})}">
+        <title>Crawler History</title>
+        
+        <th:block th:fragment="content">
+            <!-- Breadcrumb -->
+            <nav class="db-breadcrumb">
+                <div class="db-breadcrumb-item">
+                    <a th:href="@{/}" class="db-breadcrumb-link"><i class="fas fa-home"></i> Home</a>
+                </div>
+                <div class="db-breadcrumb-item">
+                    <span class="db-breadcrumb-current"><i class="fas fa-robot"></i> Crawler History</span>
+                </div>
+            </nav>
+            
+            <!-- Top Bar -->
+            <header class="db-topbar">
+                <div class="db-topbar-left">
+                    <h1 class="db-topbar-title">Crawler History</h1>
+                </div>
+            </header>
+            
+            <!-- Content -->
+            <div class="db-content">
+                <!-- Executions History -->
+                <section style="margin-bottom: 32px;">
+                    <h2 style="font-size: 20px; font-weight: 600; color: #1F2937; margin-bottom: 16px;">
+                        <i class="fas fa-history" style="margin-right: 8px; color: #3B82F6;"></i>
+                        Execution History
+                    </h2>
+                    
+                    <div th:if="${executions.isEmpty()}" class="db-alert db-alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        No crawler executions yet. Enable the crawler in application.yml to start automatic table discovery.
+                    </div>
+                    
+                    <div th:if="${!executions.isEmpty()}" class="db-table-container">
+                        <table class="db-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 80px;">ID</th>
+                                    <th style="width: 150px;">Started At</th>
+                                    <th style="width: 150px;">Finished At</th>
+                                    <th style="width: 120px;">Duration</th>
+                                    <th style="width: 120px;">Status</th>
+                                    <th style="width: 100px;">Discovered</th>
+                                    <th style="width: 100px;">Created</th>
+                                    <th>Storage Type</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="exec : ${executions}">
+                                    <td th:text="${exec.id}">1</td>
+                                    <td th:text="${#temporals.format(exec.startedAt, 'dd/MM/yyyy HH:mm:ss')}">01/01/2024 10:00:00</td>
+                                    <td>
+                                        <span th:if="${exec.finishedAt != null}" th:text="${#temporals.format(exec.finishedAt, 'dd/MM/yyyy HH:mm:ss')}">01/01/2024 10:00:00</span>
+                                        <span th:if="${exec.finishedAt == null}" style="color: #6B7280; font-style: italic;">Running...</span>
+                                    </td>
+                                    <td>
+                                        <span th:if="${exec.durationMs != null}" th:text="${exec.durationMs + ' ms'}">1000 ms</span>
+                                        <span th:if="${exec.durationMs == null}">--</span>
+                                    </td>
+                                    <td>
+                                        <span th:if="${exec.status.name() == 'SUCCESS'}" class="db-badge-status db-badge-success">
+                                            <i class="fas fa-check-circle"></i> Success
+                                        </span>
+                                        <span th:if="${exec.status.name() == 'FAILED'}" class="db-badge-status db-badge-error">
+                                            <i class="fas fa-times-circle"></i> Failed
+                                        </span>
+                                        <span th:if="${exec.status.name() == 'RUNNING'}" class="db-badge-status db-badge-warning">
+                                            <i class="fas fa-spinner fa-spin"></i> Running
+                                        </span>
+                                        <span th:if="${exec.status.name() == 'PARTIAL_SUCCESS'}" class="db-badge-status db-badge-warning">
+                                            <i class="fas fa-exclamation-triangle"></i> Partial
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span style="color: #3B82F6; font-weight: 600;" th:text="${exec.discoveredTables ?: 0}">0</span>
+                                    </td>
+                                    <td>
+                                        <span style="color: #10B981; font-weight: 600;" th:text="${exec.createdTables ?: 0}">0</span>
+                                    </td>
+                                    <td>
+                                        <span class="db-badge-status db-badge-info" th:text="${exec.storageType}">MINIO</span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+                
+                <!-- Auto-Discovered Tables -->
+                <section>
+                    <h2 style="font-size: 20px; font-weight: 600; color: #1F2937; margin-bottom: 16px;">
+                        <i class="fas fa-magic" style="margin-right: 8px; color: #8B5CF6;"></i>
+                        Auto-Discovered Tables
+                    </h2>
+                    
+                    <div th:if="${autoDiscoveredTables.isEmpty()}" class="db-alert db-alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        No tables have been automatically discovered yet.
+                    </div>
+                    
+                    <div th:if="${!autoDiscoveredTables.isEmpty()}" class="db-table-container">
+                        <table class="db-table">
+                            <thead>
+                                <tr>
+                                    <th>Table Name</th>
+                                    <th>Schema</th>
+                                    <th>Share</th>
+                                    <th>Format</th>
+                                    <th>Location</th>
+                                    <th style="width: 180px;">Discovered At</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="table : ${autoDiscoveredTables}">
+                                    <td>
+                                        <span style="font-weight: 600; color: #1F2937;" th:text="${table.name}">customers</span>
+                                        <span class="db-badge-status" style="background: #EFF6FF; color: #1D4ED8; font-size: 10px; margin-left: 8px;" 
+                                              title="Automatically discovered by crawler">
+                                            <i class="fas fa-robot"></i> Automatic
+                                        </span>
+                                    </td>
+                                    <td th:text="${table.schema.name}">sales</td>
+                                    <td th:text="${table.schema.share.name}">company-data</td>
+                                    <td>
+                                        <span th:if="${table.format == 'delta'}" class="db-badge-status db-badge-success">
+                                            <i class="fas fa-database"></i> Delta
+                                        </span>
+                                        <span th:if="${table.format == 'parquet'}" class="db-badge-status db-badge-info">
+                                            <i class="fas fa-file"></i> Parquet
+                                        </span>
+                                    </td>
+                                    <td style="font-size: 11px; color: #6B7280; font-family: monospace;" th:text="${table.location}">s3://bucket/table</td>
+                                    <td th:text="${#temporals.format(table.discoveredAt, 'dd/MM/yyyy HH:mm:ss')}">01/01/2024 10:00:00</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+        </th:block>
+    </th:block>
+</body>
+</html>
+

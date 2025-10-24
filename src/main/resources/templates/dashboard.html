@@ -249,6 +249,75 @@
                             
                         </div>
                         
+                        <!-- Crawler Status Row (if enabled) -->
+                        <div th:if="${crawlerEnabled}" style="margin-top: 16px; display: grid; grid-template-columns: 1fr; gap: 16px;">
+                            
+                            <!-- Crawler Status Card -->
+                            <div style="padding: 16px; background: #F9FAFB; border-radius: 6px; border-left: 4px solid #3B82F6;">
+                                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+                                    <div style="display: flex; align-items: center; gap: 12px;">
+                                        <div id="crawler-status-icon" style="width: 12px; height: 12px; border-radius: 50%; background: #9CA3AF;"></div>
+                                        <div style="font-weight: 600; color: #1F2937; font-size: 14px;">
+                                            <i class="fas fa-robot" style="margin-right: 8px; color: #3B82F6;"></i>
+                                            Table Crawler
+                                        </div>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 12px;">
+                                        <a href="/admin/crawler/history" style="padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; background: #EFF6FF; color: #1D4ED8; text-decoration: none;">
+                                            <i class="fas fa-history"></i> History
+                                        </a>
+                                        <div id="crawler-status-badge" style="padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; background: #F3F4F6; color: #6B7280;">
+                                            <span th:if="${crawlerLastExecution != null and crawlerLastExecution.status.name() == 'SUCCESS'}">
+                                                <i class="fas fa-check-circle"></i> <span th:text="${crawlerLastExecution.status}">SUCCESS</span>
+                                            </span>
+                                            <span th:if="${crawlerLastExecution != null and crawlerLastExecution.status.name() == 'FAILED'}">
+                                                <i class="fas fa-times-circle"></i> <span th:text="${crawlerLastExecution.status}">FAILED</span>
+                                            </span>
+                                            <span th:if="${crawlerLastExecution != null and crawlerLastExecution.status.name() == 'RUNNING'}">
+                                                <i class="fas fa-spinner fa-spin"></i> <span th:text="${crawlerLastExecution.status}">RUNNING</span>
+                                            </span>
+                                            <span th:if="${crawlerLastExecution == null}">
+                                                <i class="fas fa-minus-circle"></i> No Executions
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div style="font-size: 12px; color: #6B7280;">
+                                    <div th:if="${crawlerLastExecution != null}">
+                                        <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-top: 8px;">
+                                            <div>
+                                                <div style="font-size: 10px; color: #6B7280; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Last Run</div>
+                                                <div style="font-size: 13px; font-weight: 600; color: #1F2937; margin-top: 2px;" th:text="${#temporals.format(crawlerLastExecution.startedAt, 'HH:mm:ss')}">--:--:--</div>
+                                            </div>
+                                            <div>
+                                                <div style="font-size: 10px; color: #6B7280; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Duration</div>
+                                                <div style="font-size: 13px; font-weight: 600; color: #1F2937; margin-top: 2px;">
+                                                    <span th:if="${crawlerLastExecution.durationMs != null}" th:text="${crawlerLastExecution.durationMs + ' ms'}">0 ms</span>
+                                                    <span th:if="${crawlerLastExecution.durationMs == null}">--</span>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <div style="font-size: 10px; color: #6B7280; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Discovered</div>
+                                                <div style="font-size: 13px; font-weight: 600; color: #3B82F6; margin-top: 2px;" th:text="${crawlerLastExecution.discoveredTables ?: 0}">0</div>
+                                            </div>
+                                            <div>
+                                                <div style="font-size: 10px; color: #6B7280; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Created</div>
+                                                <div style="font-size: 13px; font-weight: 600; color: #10B981; margin-top: 2px;" th:text="${crawlerLastExecution.createdTables ?: 0}">0</div>
+                                            </div>
+                                            <div>
+                                                <div style="font-size: 10px; color: #6B7280; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Auto Tables</div>
+                                                <div style="font-size: 13px; font-weight: 600; color: #8B5CF6; margin-top: 2px;" th:text="${autoDiscoveredTablesCount ?: 0}">0</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div th:if="${crawlerLastExecution == null}" style="text-align: center; padding: 20px; color: #9CA3AF;">
+                                        No crawler executions yet
+                                    </div>
+                                </div>
+                            </div>
+                            
+                        </div>
+                        
                     </div>
                 </div>
             </div>

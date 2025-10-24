@@ -169,9 +169,9 @@ delta:
         url-protocol: http
         base-url: http://localhost:${SERVER_PORT:8080}
     
-    # Crawler disabled by default in development
+    # Crawler enabled by default in development
     crawler:
-      enabled: false
+      enabled: true
       interval-minutes: 5
       dry-run: true  # Safe mode for development
 
@@ -249,9 +249,9 @@ delta:
       bearer-token: ${DELTA_SHARING_ADMIN_TOKEN:}
     
     # Crawler configuration for production
-    # Enable via environment variable: DELTA_SHARING_CRAWLER_ENABLED=true
+    # Enabled by default, can be disabled via environment variable: DELTA_SHARING_CRAWLER_ENABLED=false
     crawler:
-      enabled: ${DELTA_SHARING_CRAWLER_ENABLED:false}
+      enabled: ${DELTA_SHARING_CRAWLER_ENABLED:true}
       interval-minutes: ${DELTA_SHARING_CRAWLER_INTERVAL:15}  # More conservative in prod
       initial-delay-minutes: ${DELTA_SHARING_CRAWLER_INITIAL_DELAY:5}
       discovery-pattern: ${DELTA_SHARING_CRAWLER_PATTERN:s3://{bucket}/{schema}/{table}}

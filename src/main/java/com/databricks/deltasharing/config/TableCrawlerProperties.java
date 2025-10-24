@@ -14,8 +14,9 @@ public class TableCrawlerProperties {
     
     /**
      * Enable or disable the automatic table crawler
+     * Default: true (enabled)
      */
-    private boolean enabled = false;
+    private boolean enabled = true;
     
     /**
      * Interval in minutes between each crawler execution

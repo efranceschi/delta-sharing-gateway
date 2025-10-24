@@ -88,7 +88,15 @@
                             <tr th:each="table : ${tables}">
                                 <td th:text="${table.id}">1</td>
                                 <td>
-                                    <a th:href="@{/admin/tables/{id}(id=${table.id})}" th:text="${table.name}">table_name</a>
+                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                        <a th:href="@{/admin/tables/{id}(id=${table.id})}" th:text="${table.name}">table_name</a>
+                                        <span th:if="${table.discoveredAt != null and table.discoveredBy == 'crawler'}" 
+                                              class="db-badge-status" 
+                                              style="background: #EFF6FF; color: #1D4ED8; font-size: 10px;"
+                                              title="Automatically discovered by crawler">
+                                            <i class="fas fa-robot"></i> Automatic
+                                        </span>
+                                    </div>
                                 </td>
                                 <td>
                                     <span class="db-badge-status" th:classappend="${table.format == 'delta' ? 'db-badge-success' : 'db-badge-info'}" th:text="${table.format}">delta</span>

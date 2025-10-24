@@ -2,9 +2,11 @@ package com.databricks.deltasharing.service;
 
 import com.databricks.deltasharing.config.TableCrawlerProperties;
 import com.databricks.deltasharing.config.StorageConfigProperties;
+import com.databricks.deltasharing.model.CrawlerExecution;
 import com.databricks.deltasharing.model.DeltaSchema;
 import com.databricks.deltasharing.model.DeltaShare;
 import com.databricks.deltasharing.model.DeltaTable;
+import com.databricks.deltasharing.repository.CrawlerExecutionRepository;
 import com.databricks.deltasharing.repository.DeltaSchemaRepository;
 import com.databricks.deltasharing.repository.DeltaShareRepository;
 import com.databricks.deltasharing.repository.DeltaTableRepository;
@@ -47,6 +49,7 @@ public class TableCrawlerService {
     private final DeltaShareRepository shareRepository;
     private final DeltaSchemaRepository schemaRepository;
     private final DeltaTableRepository tableRepository;
+    private final CrawlerExecutionRepository executionRepository;
     
     /**
      * Scheduled task that runs the table crawler
@@ -63,8 +66,18 @@ public class TableCrawlerService {
             return;
         }
         
+        // Create execution record
+        CrawlerExecution execution = CrawlerExecution.builder()
+                .startedAt(LocalDateTime.now())
+                .status(CrawlerExecution.ExecutionStatus.RUNNING)
+                .storageType(storageConfig.getType())
+                .discoveryPattern(crawlerProperties.getDiscoveryPattern())
+                .dryRun(crawlerProperties.isDryRun())
+                .build();
+        execution = executionRepository.save(execution);
+        
         log.info("╔════════════════════════════════════════════════════════════════");
-        log.info("║ Starting Automatic Table Crawler");
+        log.info("║ Starting Automatic Table Crawler (Execution #{})", execution.getId());
         log.info("╠════════════════════════════════════════════════════════════════");
         log.info("║ Pattern: {}", crawlerProperties.getDiscoveryPattern());
         log.info("║ Dry-run: {}", crawlerProperties.isDryRun());
@@ -98,8 +111,17 @@ public class TableCrawlerService {
             
             long duration = System.currentTimeMillis() - startTime;
             
+            // Update execution record with success
+            execution.setFinishedAt(LocalDateTime.now());
+            execution.setDurationMs(duration);
+            execution.setDiscoveredTables(discoveredTables);
+            execution.setCreatedSchemas(createdSchemas);
+            execution.setCreatedTables(createdTables);
+            execution.setStatus(CrawlerExecution.ExecutionStatus.SUCCESS);
+            executionRepository.save(execution);
+            
             log.info("╔════════════════════════════════════════════════════════════════");
-            log.info("║ Table Crawler Completed");
+            log.info("║ Table Crawler Completed (Execution #{})", execution.getId());
             log.info("╠════════════════════════════════════════════════════════════════");
             log.info("║ Discovered tables: {}", discoveredTables);
             log.info("║ Created schemas:   {}", createdSchemas);
@@ -109,6 +131,16 @@ public class TableCrawlerService {
             
         } catch (Exception e) {
             log.error("Error during table crawler execution", e);
+            
+            // Update execution record with failure
+            execution.setFinishedAt(LocalDateTime.now());
+            execution.setDurationMs(System.currentTimeMillis() - startTime);
+            execution.setStatus(CrawlerExecution.ExecutionStatus.FAILED);
+            execution.setErrorMessage(e.getMessage());
+            execution.setDiscoveredTables(discoveredTables);
+            execution.setCreatedSchemas(createdSchemas);
+            execution.setCreatedTables(createdTables);
+            executionRepository.save(execution);
         }
     }
     
@@ -489,6 +521,10 @@ public class TableCrawlerService {
         newTable.setShareAsView(false);
         newTable.setCreatedAt(LocalDateTime.now());
         newTable.setUpdatedAt(LocalDateTime.now());
+        
+        // Mark as auto-discovered
+        newTable.setDiscoveredAt(LocalDateTime.now());
+        newTable.setDiscoveredBy("crawler");
         
         tableRepository.save(newTable);
         log.info("✅ Created table: {} in schema: {} ({})", tableName, schema.getName(), location);

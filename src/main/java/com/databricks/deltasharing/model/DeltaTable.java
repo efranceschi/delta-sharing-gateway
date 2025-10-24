@@ -56,6 +56,12 @@ public class DeltaTable {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
     
+    @Column(name = "discovered_at")
+    private LocalDateTime discoveredAt;
+    
+    @Column(name = "discovered_by", length = 50)
+    private String discoveredBy; // "crawler" or null for manual
+    
     @PrePersist
     protected void onCreate() {
         if (uuid == null || uuid.isEmpty()) {
@@ -68,5 +74,12 @@ public class DeltaTable {
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
+    }
+    
+    /**
+     * Check if this table was discovered automatically by the crawler
+     */
+    public boolean isAutoDiscovered() {
+        return discoveredAt != null && "crawler".equals(discoveredBy);
     }
 }
