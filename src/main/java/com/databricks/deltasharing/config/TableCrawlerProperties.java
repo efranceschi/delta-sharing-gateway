@@ -25,8 +25,14 @@ public class TableCrawlerProperties {
     private int intervalMinutes = 5;
     
     /**
+     * Initial delay before first crawler execution (in minutes)
+     * Default: 1 minute
+     */
+    private int initialDelayMinutes = 1;
+    
+    /**
      * Discovery pattern for tables in storage
-     * Default: s3://{bucket}/{schema}/{table}
+     * Default: s3://{share}/{schema}/{table}
      * 
      * Supported placeholders:
      * - {bucket}: Storage bucket/container name
@@ -35,11 +41,11 @@ public class TableCrawlerProperties {
      * - {table}: Table name
      * 
      * Examples:
-     * - s3://{bucket}/{schema}/{table}
+     * - s3://{share}/{schema}/{table}
      * - s3://{bucket}/{share}/{schema}/{table}
      * - /data/{share}/{schema}/{table}
      */
-    private String discoveryPattern = "s3://{bucket}/{schema}/{table}";
+    private String discoveryPattern = "s3://{share}/{schema}/{table}";
     
     /**
      * Automatically create missing schemas when discovering tables

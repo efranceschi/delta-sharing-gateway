@@ -76,7 +76,7 @@ delta:
       initial-delay-minutes: ${DELTA_SHARING_CRAWLER_INITIAL_DELAY:1}
       
       # Discovery pattern for tables in storage
-      # Default: s3://{bucket}/{schema}/{table}
+      # Default: s3://{share}/{schema}/{table}
       # 
       # Supported placeholders:
       # - {bucket}: Storage bucket/container name
@@ -85,10 +85,10 @@ delta:
       # - {table}: Table name
       # 
       # Examples:
-      # - s3://{bucket}/{schema}/{table}
+      # - s3://{share}/{schema}/{table}
       # - s3://{bucket}/{share}/{schema}/{table}
       # - /data/{share}/{schema}/{table}
-      discovery-pattern: ${DELTA_SHARING_CRAWLER_PATTERN:s3://{bucket}/{schema}/{table}}
+      discovery-pattern: ${DELTA_SHARING_CRAWLER_PATTERN:s3://{share}/{schema}/{table}}
       
       # Automatically create missing schemas when discovering tables
       auto-create-schemas: ${DELTA_SHARING_CRAWLER_AUTO_CREATE_SCHEMAS:true}
@@ -254,7 +254,7 @@ delta:
       enabled: ${DELTA_SHARING_CRAWLER_ENABLED:true}
       interval-minutes: ${DELTA_SHARING_CRAWLER_INTERVAL:15}  # More conservative in prod
       initial-delay-minutes: ${DELTA_SHARING_CRAWLER_INITIAL_DELAY:5}
-      discovery-pattern: ${DELTA_SHARING_CRAWLER_PATTERN:s3://{bucket}/{schema}/{table}}
+      discovery-pattern: ${DELTA_SHARING_CRAWLER_PATTERN:s3://{share}/{schema}/{table}}
       auto-create-schemas: ${DELTA_SHARING_CRAWLER_AUTO_CREATE_SCHEMAS:false}  # Require explicit schema creation in prod
       dry-run: ${DELTA_SHARING_CRAWLER_DRY_RUN:false}
     
