@@ -29,6 +29,7 @@ import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -52,13 +53,50 @@ public class TableCrawlerService {
     private final DeltaTableRepository tableRepository;
     private final CrawlerExecutionRepository executionRepository;
     
+    // Control flags for concurrent execution prevention
+    private final AtomicBoolean isRunning = new AtomicBoolean(false);
+    private volatile LocalDateTime lastExecutionFinishedAt = null;
+    
     /**
      * Trigger manual crawler execution asynchronously
+     * @return true if crawler started, false if already running
+     */
+    public boolean triggerManualCrawl() {
+        log.info("🚀 Manual crawler trigger requested");
+        
+        // Check if already running
+        if (isRunning.get()) {
+            log.warn("⚠️  Crawler is already running. Manual trigger ignored.");
+            return false;
+        }
+        
+        log.info("✅ Starting manual crawler execution asynchronously");
+        executeAsync();
+        return true;
+    }
+    
+    /**
+     * Execute crawler asynchronously (used for manual triggers)
      */
     @Async
-    public void triggerManualCrawl() {
-        log.info("🚀 Manual crawler trigger - Starting asynchronous execution");
+    private void executeAsync() {
         crawlTables();
+    }
+    
+    /**
+     * Check if crawler is currently running
+     * @return true if running, false otherwise
+     */
+    public boolean isRunning() {
+        return isRunning.get();
+    }
+    
+    /**
+     * Get the timestamp of the last execution finish
+     * @return LocalDateTime of last finish, or null if never executed
+     */
+    public LocalDateTime getLastExecutionFinishedAt() {
+        return lastExecutionFinishedAt;
     }
     
     /**
@@ -70,11 +108,31 @@ public class TableCrawlerService {
         timeUnit = TimeUnit.MINUTES,
         initialDelayString = "${delta.sharing.crawler.initial-delay-minutes:1}"
     )
+    public void scheduledCrawl() {
+        // Scheduled execution - just delegates to crawlTables
+        // The @Scheduled fixedDelay already prevents concurrent executions
+        // and waits for the previous execution to finish before starting the next one
+        crawlTables();
+    }
+    
+    /**
+     * Main crawler execution method
+     * Can be called both by scheduled task and manual trigger
+     */
+    @Transactional
     public void crawlTables() {
         if (!crawlerProperties.isEnabled()) {
             log.debug("Table crawler is disabled, skipping execution");
             return;
         }
+        
+        // Try to acquire lock
+        if (!isRunning.compareAndSet(false, true)) {
+            log.warn("⚠️  Crawler execution skipped - already running");
+            return;
+        }
+        
+        log.info("🔒 Crawler lock acquired - starting execution");
         
         // Create execution record
         CrawlerExecution execution = CrawlerExecution.builder()
@@ -165,6 +223,11 @@ public class TableCrawlerService {
             execution.setCreatedSchemas(createdSchemas);
             execution.setCreatedTables(createdTables);
             executionRepository.save(execution);
+        } finally {
+            // Always release the lock and update timestamp
+            lastExecutionFinishedAt = LocalDateTime.now();
+            isRunning.set(false);
+            log.info("🔓 Crawler lock released - execution finished at {}", lastExecutionFinishedAt);
         }
     }
     

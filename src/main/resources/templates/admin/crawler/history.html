@@ -159,45 +159,63 @@
                 const btn = document.getElementById('trigger-crawler-btn');
                 const originalHtml = btn.innerHTML;
                 
-                // Disable button and show loading
-                btn.disabled = true;
-                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Running...';
-                
-                // Get CSRF token from meta tag or cookie
-                const csrfToken = document.querySelector('meta[name="_csrf"]')?.getAttribute('content') 
-                               || getCookie('XSRF-TOKEN');
-                const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.getAttribute('content') 
-                                || 'X-XSRF-TOKEN';
-                
-                const headers = {
-                    'Content-Type': 'application/json'
-                };
-                
-                if (csrfToken) {
-                    headers[csrfHeader] = csrfToken;
-                }
-                
-                fetch('/api/crawler/trigger', {
-                    method: 'POST',
-                    headers: headers
-                })
+                // First check if crawler is already running
+                fetch('/api/crawler/status')
                 .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        alert('✅ Crawler started successfully\!\n\nCheck the logs for detailed progress.\nThe page will refresh in 3 seconds to show the new execution.');
-                        setTimeout(() => {
-                            location.reload();
-                        }, 3000);
-                    } else {
-                        alert('❌ Error: ' + data.message);
+                .then(statusData => {
+                    if (statusData.running) {
+                        alert('⚠️ Crawler is already running!\n\nPlease wait for the current execution to finish before starting a new one.');
+                        return;
+                    }
+                    
+                    // If not running, proceed with trigger
+                    // Disable button and show loading
+                    btn.disabled = true;
+                    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Starting...';
+                    
+                    // Get CSRF token from meta tag or cookie
+                    const csrfToken = document.querySelector('meta[name="_csrf"]')?.getAttribute('content') 
+                                   || getCookie('XSRF-TOKEN');
+                    const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.getAttribute('content') 
+                                    || 'X-XSRF-TOKEN';
+                    
+                    const headers = {
+                        'Content-Type': 'application/json'
+                    };
+                    
+                    if (csrfToken) {
+                        headers[csrfHeader] = csrfToken;
+                    }
+                    
+                    fetch('/api/crawler/trigger', {
+                        method: 'POST',
+                        headers: headers
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            alert('✅ Crawler started successfully!\n\n' +
+                                  'The crawler is now running in the background.\n' +
+                                  'Check the logs for detailed progress.\n\n' +
+                                  'The next scheduled execution will be postponed until this one finishes.\n\n' +
+                                  'The page will refresh in 5 seconds to show the new execution.');
+                            setTimeout(() => {
+                                location.reload();
+                            }, 5000);
+                        } else {
+                            alert('❌ ' + data.message);
+                            btn.disabled = false;
+                            btn.innerHTML = originalHtml;
+                        }
+                    })
+                    .catch(error => {
+                        alert('❌ Error triggering crawler: ' + error.message);
                         btn.disabled = false;
                         btn.innerHTML = originalHtml;
-                    }
+                    });
                 })
                 .catch(error => {
-                    alert('❌ Error triggering crawler: ' + error.message);
-                    btn.disabled = false;
-                    btn.innerHTML = originalHtml;
+                    alert('❌ Error checking crawler status: ' + error.message);
                 });
             }
             
