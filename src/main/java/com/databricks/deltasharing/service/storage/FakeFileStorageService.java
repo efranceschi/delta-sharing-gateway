@@ -11,7 +11,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
@@ -293,12 +292,10 @@ public class FakeFileStorageService implements FileStorageService {
     
     /**
      * Get the schema for a table (interface implementation)
-     * Cached to avoid repeated schema generation
      */
     @Override
-    @Cacheable(value = "tableSchemas", key = "#tableName + '_' + #format")
     public String getTableSchema(String tableName, String format) {
-        log.debug("Generating (uncached) schema for table: {} with format: {}", tableName, format);
+        log.debug("Generating schema for table: {} with format: {}", tableName, format);
         return generateFakeSchema(tableName, format);
     }
     
@@ -421,9 +418,8 @@ public class FakeFileStorageService implements FileStorageService {
      * Returns a list of column names that should be used for partitioning.
      */
     @Override
-    @Cacheable(value = "partitionColumns", key = "#tableName")
     public String[] getPartitionColumns(String tableName) {
-        log.debug("Generating (uncached) partition columns for table: {}", tableName);
+        log.debug("Generating partition columns for table: {}", tableName);
         return selectPartitionPattern(tableName);
     }
     

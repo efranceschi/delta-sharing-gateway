@@ -53,15 +53,6 @@ delta:
       # Set to true for human-readable JSON responses (useful for debugging)
       pretty-print: ${DELTA_SHARING_JSON_PRETTY_PRINT:false}
     
-    # Cache Configuration for Schema and Metadata
-    cache:
-      schema:
-        # Time-to-live for cached table schemas (in minutes)
-        # Schemas are cached to avoid repeated Delta Log reads
-        ttl-minutes: ${SCHEMA_CACHE_TTL_MINUTES:60}
-        # Maximum number of schemas to cache
-        max-size: ${SCHEMA_CACHE_MAX_SIZE:1000}
-    
     # Automatic Table Crawler Configuration
     crawler:
       # Enable or disable the automatic table discovery crawler

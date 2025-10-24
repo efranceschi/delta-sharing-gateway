@@ -4,7 +4,6 @@ import com.github.benmanes.caffeine.cache.Caffeine;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.binder.cache.CaffeineCacheMetrics;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.cache.caffeine.CaffeineCache;
@@ -17,9 +16,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * Cache Configuration for Delta Sharing Gateway
  * 
- * Provides high-performance caching for frequently accessed data:
- * - Table schemas: Cached to avoid repeated Delta Log reads
- * - Partition columns: Cached for quick metadata retrieval
+ * Provides high-performance caching for health checks:
  * - Health checks: Cached to avoid excessive external service calls
  * 
  * Uses Caffeine cache with configurable TTL and maximum size.
@@ -29,62 +26,25 @@ import java.util.concurrent.TimeUnit;
 @EnableCaching
 public class CacheConfig {
 
-    @Value("${delta.sharing.cache.schema.ttl-minutes:60}")
-    private long schemaCacheTtlMinutes;
-
-    @Value("${delta.sharing.cache.schema.max-size:1000}")
-    private long schemaCacheMaxSize;
-
     /**
      * Cache Manager bean with Caffeine implementation
      * 
      * Cache Names:
-     * - "tableSchemas": Caches table schema JSON strings (TTL: configured minutes)
-     * - "partitionColumns": Caches partition column arrays (TTL: configured minutes)
-     * - "minioHealthCheck": Caches MinIO health check results (TTL: 60 seconds)
      * - "databaseHealthCheck": Caches Database health check results (TTL: 60 seconds)
      * - "jvmHealthCheck": Caches JVM memory metrics (TTL: 10 seconds)
-     * - "minioClusterHealthCheck": Caches MinIO cluster info (TTL: 60 seconds)
      * 
      * @return Configured CacheManager
      */
     @Bean
     public CacheManager cacheManager(MeterRegistry meterRegistry) {
         log.info("Initializing Cache Manager:");
-        log.info("  - Schema Cache TTL: {} minutes", schemaCacheTtlMinutes);
-        log.info("  - Schema Cache Max Size: {} entries", schemaCacheMaxSize);
         log.info("  - Health Check Cache TTL: 60 seconds");
         log.info("  - JVM Cache TTL: 10 seconds");
         
-        CaffeineCacheManager cacheManager = new CaffeineCacheManager(
-                "tableSchemas", 
-                "partitionColumns"
-        );
+        CaffeineCacheManager cacheManager = new CaffeineCacheManager();
         
-        cacheManager.setCaffeine(Caffeine.newBuilder()
-                .expireAfterWrite(schemaCacheTtlMinutes, TimeUnit.MINUTES)
-                .maximumSize(schemaCacheMaxSize)
-                .recordStats() // Enable statistics for monitoring
-        );
-        
-        // Configure health check caches with 60 second TTL
-        cacheManager.registerCustomCache("minioHealthCheck", 
-                Caffeine.newBuilder()
-                        .expireAfterWrite(60, TimeUnit.SECONDS)
-                        .maximumSize(1)
-                        .recordStats()
-                        .build()
-        );
-        
+        // Configure database health check cache with 60 second TTL
         cacheManager.registerCustomCache("databaseHealthCheck", 
-                Caffeine.newBuilder()
-                        .expireAfterWrite(60, TimeUnit.SECONDS)
-                        .maximumSize(1)
-                        .recordStats()
-                        .build()
-        );
-        
-        cacheManager.registerCustomCache("minioClusterHealthCheck", 
                 Caffeine.newBuilder()
                         .expireAfterWrite(60, TimeUnit.SECONDS)
                         .maximumSize(1)
@@ -103,13 +63,9 @@ public class CacheConfig {
         
         log.info("Cache Manager initialized successfully");
         
-        // Register metrics for default caches
-        registerCacheMetrics(cacheManager, "tableSchemas", meterRegistry);
-        registerCacheMetrics(cacheManager, "partitionColumns", meterRegistry);
-        registerCacheMetrics(cacheManager, "minioHealthCheck", meterRegistry);
+        // Register metrics for caches
         registerCacheMetrics(cacheManager, "databaseHealthCheck", meterRegistry);
         registerCacheMetrics(cacheManager, "jvmHealthCheck", meterRegistry);
-        registerCacheMetrics(cacheManager, "minioClusterHealthCheck", meterRegistry);
         
         return cacheManager;
     }

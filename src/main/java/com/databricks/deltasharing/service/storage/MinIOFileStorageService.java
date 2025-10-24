@@ -19,7 +19,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import jakarta.annotation.PostConstruct;
@@ -1004,12 +1003,10 @@ public class MinIOFileStorageService implements FileStorageService {
     /**
      * Get table schema from Delta log metadata
      * For MinIO, we read the schema from the Delta transaction log stored in MinIO
-     * Cached to avoid repeated MinIO reads and Delta log parsing
      */
     @Override
-    @Cacheable(value = "tableSchemas", key = "#tableName + '_' + #format")
     public String getTableSchema(String tableName, String format) {
-        log.debug("Reading (uncached) schema for table: {} (format: {}) from MinIO", tableName, format);
+        log.debug("Reading schema for table: {} (format: {}) from MinIO", tableName, format);
         
         if (!isAvailable()) {
             log.warn("MinIO storage service is not available");
@@ -1172,14 +1169,12 @@ public class MinIOFileStorageService implements FileStorageService {
     /**
      * Get partition columns from Delta log metadata
      * For MinIO, we read partition info from the Delta transaction log stored in MinIO
-     * Cached to avoid repeated MinIO reads and Delta log parsing
      * 
      * For Parquet tables without Delta Log, returns empty array
      */
     @Override
-    @Cacheable(value = "partitionColumns", key = "#tableName")
     public String[] getPartitionColumns(String tableName) {
-        log.debug("Reading (uncached) partition columns for table: {} from Delta log in MinIO", tableName);
+        log.debug("Reading partition columns for table: {} from Delta log in MinIO", tableName);
         
         // Check if this is a Delta table by looking up in repository
         DeltaTable tableEntity = findTableByName(tableName);

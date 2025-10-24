@@ -32,12 +32,10 @@ public class HealthCheckController {
     
     /**
      * Check MinIO service health
-     * Result is cached for 60 seconds to avoid performance impact
      * 
      * @return Health check response with status and details
      */
     @GetMapping("/minio")
-    @Cacheable(value = "minioHealthCheck", unless = "#result == null")
     public ResponseEntity<Map<String, Object>> checkMinioHealth() {
         Map<String, Object> response = new HashMap<>();
         response.put("service", "MinIO");
@@ -168,12 +166,10 @@ public class HealthCheckController {
     
     /**
      * Get MinIO cluster information
-     * Result is cached for 60 seconds
      * 
      * @return MinIO cluster metrics and health
      */
     @GetMapping("/minio/cluster")
-    @Cacheable(value = "minioClusterHealthCheck", unless = "#result == null")
     public ResponseEntity<Map<String, Object>> getMinioClusterInfo() {
         Map<String, Object> response = new HashMap<>();
         response.put("service", "MinIO Cluster");
