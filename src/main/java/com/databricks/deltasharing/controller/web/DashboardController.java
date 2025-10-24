@@ -1,5 +1,6 @@
 package com.databricks.deltasharing.controller.web;
 
+import com.databricks.deltasharing.config.TableCrawlerProperties;
 import com.databricks.deltasharing.model.CrawlerExecution;
 import com.databricks.deltasharing.repository.DeltaTableRepository;
 import com.databricks.deltasharing.service.CrawlerStatusService;
@@ -29,6 +30,9 @@ public class DashboardController {
     @Autowired(required = false)
     private CrawlerStatusService crawlerStatusService;
     
+    @Autowired(required = false)
+    private TableCrawlerProperties crawlerProperties;
+    
     @GetMapping("/")
     @Transactional(readOnly = true)
     public String dashboard(Model model) {
@@ -52,11 +56,19 @@ public class DashboardController {
             model.addAttribute("crawlerEnabled", lastExecution.isPresent());
             model.addAttribute("autoDiscoveredTablesCount", crawlerStatusService.countAutoDiscoveredTables());
             model.addAttribute("manualTablesCount", crawlerStatusService.countManualTables());
+            
+            // Add crawler interval if properties are available
+            if (crawlerProperties != null) {
+                model.addAttribute("crawlerIntervalMinutes", crawlerProperties.getIntervalMinutes());
+            } else {
+                model.addAttribute("crawlerIntervalMinutes", 5); // Default value
+            }
         } else {
             model.addAttribute("crawlerEnabled", false);
             model.addAttribute("crawlerLastExecution", null);
             model.addAttribute("autoDiscoveredTablesCount", 0L);
             model.addAttribute("manualTablesCount", tablesCount);
+            model.addAttribute("crawlerIntervalMinutes", 5); // Default value
         }
         
         return "dashboard";
